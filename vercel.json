@@ -4,20 +4,17 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["iad1"],
-  "env": [
-    {
-      "key": "MONGODB_URI",
+  "env": {
+    "MONGODB_URI": {
       "description": "MongoDB connection string"
     },
-    {
-      "key": "JWT_SECRET",
+    "JWT_SECRET": {
       "description": "JWT secret key for authentication"
     },
-    {
-      "key": "NEXT_PUBLIC_API_URL",
+    "NEXT_PUBLIC_API_URL": {
       "description": "Public API URL"
     }
-  ],
+  },
   "functions": {
     "src/app/api/**/*.js": {
       "maxDuration": 30
