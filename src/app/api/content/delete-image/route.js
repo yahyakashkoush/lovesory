@@ -1,6 +1,8 @@
 import dbConnect from '@/lib/mongodb';
 import Content from '@/models/Content';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
+import fs from 'fs';
+import path from 'path';
 
 export async function DELETE(req) {
   try {
@@ -54,6 +56,26 @@ export async function DELETE(req) {
         { error: 'Image not found' },
         { status: 404 }
       );
+    }
+
+    // Get the image to delete
+    const imageToDelete = content.images[imageIndex];
+    console.log('Image to delete:', imageToDelete);
+
+    // Delete the file from disk if it exists
+    if (imageToDelete.filename) {
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+      const filepath = path.join(uploadsDir, imageToDelete.filename);
+      
+      try {
+        if (fs.existsSync(filepath)) {
+          fs.unlinkSync(filepath);
+          console.log('File deleted from disk:', filepath);
+        }
+      } catch (fileError) {
+        console.error('Error deleting file:', fileError);
+        // Continue anyway - delete from DB
+      }
     }
 
     // Remove the image at the specified index

@@ -1,6 +1,14 @@
 import dbConnect from '@/lib/mongodb';
 import Content from '@/models/Content';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
+import fs from 'fs';
+import path from 'path';
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 export async function POST(req) {
   try {
@@ -32,11 +40,29 @@ export async function POST(req) {
       );
     }
 
-    // Convert file to base64
+    // Check file size (max 10MB for images)
+    if (file.size > 10 * 1024 * 1024) {
+      return Response.json(
+        { error: 'File size exceeds 10MB limit' },
+        { status: 400 }
+      );
+    }
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(7);
+    const filename = `${timestamp}-${random}-${file.name}`;
+    const filepath = path.join(uploadsDir, filename);
+
+    // Save file to disk
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString('base64');
-    const dataUrl = `data:${file.type};base64,${base64}`;
+    fs.writeFileSync(filepath, buffer);
+
+    console.log('Cover file saved to:', filepath);
+
+    // Store only the URL reference in MongoDB
+    const coverUrl = `/uploads/${filename}`;
 
     let content = await Content.findOne();
 
@@ -45,10 +71,12 @@ export async function POST(req) {
     }
 
     content.songCover = {
-      url: dataUrl,
+      url: coverUrl,
+      filename: filename,
       uploadedAt: new Date(),
     };
 
+    content.markModified('songCover');
     await content.save();
 
     return Response.json(

@@ -1,6 +1,14 @@
 import dbConnect from '@/lib/mongodb';
 import Content from '@/models/Content';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
+import fs from 'fs';
+import path from 'path';
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 export async function POST(req) {
   try {
@@ -43,13 +51,21 @@ export async function POST(req) {
       );
     }
 
-    // Convert file to base64
+    // Generate unique filename
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(7);
+    const filename = `${timestamp}-${random}-${file.name}`;
+    const filepath = path.join(uploadsDir, filename);
+
+    // Save file to disk
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString('base64');
-    const dataUrl = `data:${file.type};base64,${base64}`;
+    fs.writeFileSync(filepath, buffer);
 
-    console.log('Base64 created, length:', dataUrl.length);
+    console.log('File saved to:', filepath);
+
+    // Store only the URL reference in MongoDB (not the base64)
+    const imageUrl = `/uploads/${filename}`;
 
     let content = await Content.findOne();
 
@@ -60,7 +76,8 @@ export async function POST(req) {
     console.log('Current images count:', content.images.length);
 
     const newImage = {
-      url: dataUrl,
+      url: imageUrl,
+      filename: filename,
       uploadedAt: new Date(),
     };
 
@@ -76,6 +93,7 @@ export async function POST(req) {
         success: true,
         message: 'Image uploaded successfully',
         imagesCount: content.images.length,
+        imageUrl: imageUrl,
       },
       { status: 200 }
     );
