@@ -229,39 +229,15 @@ export default function AdminDashboard() {
         throw new Error('No images found');
       }
 
-      // Get the image URL to delete from storage
-      const imageToDelete = content.images[index];
-      console.log('Deleting image at index:', index, imageToDelete);
+      console.log('Deleting image at index:', index);
 
-      // Create updated images array without the deleted image
-      const updatedImages = content.images.filter((_, i) => i !== index);
-      console.log('Updated images array length:', updatedImages.length);
-      console.log('Updated images:', updatedImages);
-
-      // Update local state immediately for better UX
-      setContent({
-        ...content,
-        images: updatedImages,
-      });
-
-      // Prepare images data - ensure proper format
-      const imagesData = updatedImages.map(img => ({
-        url: img.url,
-        uploadedAt: img.uploadedAt || new Date().toISOString(),
-      }));
-
-      console.log('Sending images data:', imagesData);
-
-      // Send only the images array to update
-      const response = await fetch('/api/content', {
-        method: 'PUT',
+      // Use dedicated delete endpoint
+      const response = await fetch(`/api/content/delete-image?index=${index}`, {
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          images: imagesData,
-        }),
       });
 
       const responseData = await response.json();
@@ -269,13 +245,11 @@ export default function AdminDashboard() {
 
       if (!response.ok) {
         console.error('Delete failed:', responseData);
-        // Revert local state on error
-        await fetchContent();
         throw new Error(responseData.error || 'Failed to delete image');
       }
 
-      // Update local state with server response
-      setContent(responseData);
+      // Refresh content from server
+      await fetchContent();
       setMessage('✅ Image deleted successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
