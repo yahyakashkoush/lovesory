@@ -61,14 +61,17 @@ export default function AdminDashboard() {
       }
 
       const payload = {
-        maleFirstName,
-        femaleFirstName,
-        tagline,
-        loveMessage,
+        maleFirstName: maleFirstName.trim(),
+        femaleFirstName: femaleFirstName.trim(),
+        tagline: tagline.trim(),
+        loveMessage: loveMessage.trim(),
         startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
       };
 
-      const response = await fetch('/api/content', {
+      console.log('Saving content:', Object.keys(payload));
+
+      // Use dedicated text update endpoint
+      const response = await fetch('/api/content/update-text', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -78,13 +81,13 @@ export default function AdminDashboard() {
       });
 
       const data = await response.json();
+      console.log('Save response:', data);
 
       if (!response.ok) {
         console.error('Response error:', data);
         throw new Error(data.error || 'Failed to save content');
       }
 
-      setContent(data);
       setMaleFirstName(data.maleFirstName);
       setFemaleFirstName(data.femaleFirstName);
       setTagline(data.tagline);

@@ -5,6 +5,7 @@ import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
 export async function POST(req) {
   try {
     const token = getTokenFromRequest(req);
+    console.log('Image upload token received:', token ? 'Yes' : 'No');
 
     if (!token) {
       return Response.json(
@@ -32,11 +33,23 @@ export async function POST(req) {
       );
     }
 
+    console.log('File received:', file.name, 'Size:', file.size);
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      return Response.json(
+        { error: 'File size exceeds 5MB limit' },
+        { status: 400 }
+      );
+    }
+
     // Convert file to base64
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const base64 = buffer.toString('base64');
     const dataUrl = `data:${file.type};base64,${base64}`;
+
+    console.log('Base64 created, length:', dataUrl.length);
 
     let content = await Content.findOne();
 
@@ -44,25 +57,43 @@ export async function POST(req) {
       content = new Content();
     }
 
-    content.images.push({
+    console.log('Current images count:', content.images.length);
+
+    const newImage = {
       url: dataUrl,
       uploadedAt: new Date(),
-    });
+    };
 
+    content.images.push(newImage);
+    content.markModified('images');
+
+    console.log('Saving content with', content.images.length, 'images');
     await content.save();
+    console.log('Content saved successfully');
 
     return Response.json(
       {
         success: true,
         message: 'Image uploaded successfully',
-        image: content.images[content.images.length - 1],
+        imagesCount: content.images.length,
       },
       { status: 200 }
     );
   } catch (error) {
     console.error('Image upload error:', error);
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return Response.json(
+        { error: 'Validation error: ' + messages.join(', ') },
+        { status: 400 }
+      );
+    }
+
     return Response.json(
-      { error: 'Internal server error' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
