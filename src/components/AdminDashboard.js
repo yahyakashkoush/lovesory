@@ -230,6 +230,7 @@ export default function AdminDashboard() {
       }
 
       console.log('Deleting image at index:', index);
+      console.log('Current images count:', content.images.length);
 
       // Use dedicated delete endpoint
       const response = await fetch(`/api/content/delete-image?index=${index}`, {
@@ -242,14 +243,20 @@ export default function AdminDashboard() {
 
       const responseData = await response.json();
       console.log('Delete response:', responseData);
+      console.log('Response status:', response.status);
 
       if (!response.ok) {
         console.error('Delete failed:', responseData);
         throw new Error(responseData.error || 'Failed to delete image');
       }
 
-      // Refresh content from server
+      console.log('Delete successful, refreshing content...');
+      
+      // Refresh content from server with a small delay to ensure DB is updated
+      await new Promise(resolve => setTimeout(resolve, 500));
       await fetchContent();
+      
+      console.log('Content refreshed');
       setMessage('✅ Image deleted successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
