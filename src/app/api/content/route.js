@@ -80,17 +80,39 @@ export async function PUT(req) {
       console.log('Updated startDate');
     }
     if (Array.isArray(body.images)) {
-      content.images = body.images;
-      console.log('Updated images array, new length:', body.images.length);
+      // Validate and clean images array
+      const validImages = body.images.filter(img => {
+        if (!img || typeof img !== 'object') return false;
+        if (!img.url || typeof img.url !== 'string') return false;
+        return true;
+      });
+      
+      console.log('Original images count:', body.images.length);
+      console.log('Valid images count:', validImages.length);
+      
+      content.images = validImages;
+      console.log('Updated images array, new length:', validImages.length);
     }
 
-    await content.save();
+    const savedContent = await content.save();
     console.log('Content saved successfully');
 
-    return Response.json(content, { status: 200 });
+    return Response.json(savedContent, { status: 200 });
   } catch (error) {
     console.error('Update content error:', error);
     console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Error details:', error.errors);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return Response.json(
+        { error: 'Validation error: ' + messages.join(', ') },
+        { status: 400 }
+      );
+    }
+
     return Response.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

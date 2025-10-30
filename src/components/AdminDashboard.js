@@ -225,12 +225,32 @@ export default function AdminDashboard() {
         return;
       }
 
+      if (!content || !content.images || !Array.isArray(content.images)) {
+        throw new Error('No images found');
+      }
+
       // Get the image URL to delete from storage
       const imageToDelete = content.images[index];
-      console.log('Deleting image:', imageToDelete);
+      console.log('Deleting image at index:', index, imageToDelete);
 
       // Create updated images array without the deleted image
       const updatedImages = content.images.filter((_, i) => i !== index);
+      console.log('Updated images array length:', updatedImages.length);
+      console.log('Updated images:', updatedImages);
+
+      // Update local state immediately for better UX
+      setContent({
+        ...content,
+        images: updatedImages,
+      });
+
+      // Prepare images data - ensure proper format
+      const imagesData = updatedImages.map(img => ({
+        url: img.url,
+        uploadedAt: img.uploadedAt || new Date().toISOString(),
+      }));
+
+      console.log('Sending images data:', imagesData);
 
       // Send only the images array to update
       const response = await fetch('/api/content', {
@@ -240,22 +260,29 @@ export default function AdminDashboard() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          images: updatedImages,
+          images: imagesData,
         }),
       });
 
+      const responseData = await response.json();
+      console.log('Delete response:', responseData);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete image');
+        console.error('Delete failed:', responseData);
+        // Revert local state on error
+        await fetchContent();
+        throw new Error(responseData.error || 'Failed to delete image');
       }
 
-      // Refresh content from server
-      await fetchContent();
+      // Update local state with server response
+      setContent(responseData);
       setMessage('✅ Image deleted successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Delete error:', error);
       setMessage(`❌ Failed to delete image: ${error.message}`);
+      // Refresh to ensure UI is in sync with server
+      await fetchContent();
     } finally {
       setSaving(false);
     }
