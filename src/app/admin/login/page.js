@@ -53,7 +53,7 @@ export default function LoginPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-pink-600 mb-2">
-              Ahmed's Portal
+              Ahmed&apos;s Portal
             </h1>
             <p className="text-rose-600">Admin Access</p>
           </div>
@@ -110,7 +110,7 @@ export default function LoginPage() {
           {/* Register Link */}
           <div className="mt-6 text-center">
             <p className="text-rose-600">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link href="/admin/register" className="font-semibold hover:text-rose-700">
                 Register here
               </Link>
