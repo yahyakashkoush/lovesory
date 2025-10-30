@@ -6,13 +6,16 @@
   "regions": ["iad1"],
   "env": {
     "MONGODB_URI": {
-      "description": "MongoDB connection string"
+      "description": "MongoDB connection string",
+      "required": true
     },
     "JWT_SECRET": {
-      "description": "JWT secret key for authentication"
+      "description": "JWT secret key for authentication",
+      "required": true
     },
     "NEXT_PUBLIC_API_URL": {
-      "description": "Public API URL"
+      "description": "Public API URL",
+      "required": true
     }
   },
   "functions": {
