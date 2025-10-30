@@ -1,73 +1,123 @@
+#!/usr/bin/env node
+
+/**
+ * Database Seed Script
+ * Creates initial admin user for testing
+ */
+
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+require('dotenv').config({ path: '.env.local' });
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://yahyaemad999_db_user:jYVOXbdTiww6Ngos@cluster0.lmh2xxt.mongodb.net/?appName=Cluster0';
+const MONGODB_URI = process.env.MONGODB_URI;
 
-const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  name: { type: String, default: 'Admin' },
-});
+if (!MONGODB_URI) {
+  console.error('❌ ERROR: MONGODB_URI is not defined in .env.local');
+  process.exit(1);
+}
 
-const contentSchema = new mongoose.Schema({
-  maleFirstName: { type: String, default: 'Ahmed' },
-  femaleFirstName: { type: String, default: 'Mai' },
-  tagline: { type: String, default: 'Our love story began with a glance and turned into a lifetime of longing.' },
-  loveMessage: { type: String, default: 'I love you more than words can express. You are my forever.' },
-  images: [{ url: String, uploadedAt: { type: Date, default: Date.now } }],
-  song: { url: String, uploadedAt: Date },
-  songCover: { url: String, uploadedAt: Date },
-  startDate: { type: Date, default: new Date('2024-01-01') },
-});
+// User Schema
+const userSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
+    name: {
+      type: String,
+      default: 'Admin',
+    },
+  },
+  { timestamps: true }
+);
 
-const User = mongoose.model('User', userSchema);
-const Content = mongoose.model('Content', contentSchema);
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) {
+    return next();
+  }
 
-async function seed() {
   try {
-    await mongoose.connect(MONGODB_URI);
-    console.log('Connected to MongoDB');
-
-    // Clear existing data
-    await User.deleteMany({});
-    await Content.deleteMany({});
-    console.log('Cleared existing data');
-
-    // Create demo user
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('admin123', salt);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
-    const user = new User({
-      email: 'admin@example.com',
-      password: hashedPassword,
-      name: 'Admin',
+const User = mongoose.models.User || mongoose.model('User', userSchema);
+
+async function seedDatabase() {
+  try {
+    console.log('🔍 Connecting to MongoDB...');
+    await mongoose.connect(MONGODB_URI, {
+      bufferCommands: false,
     });
 
-    await user.save();
-    console.log('✅ Demo user created: admin@example.com / admin123');
+    console.log('✅ Connected to MongoDB\n');
 
-    // Create default content
-    const content = new Content({
-      maleFirstName: 'Ahmed',
-      femaleFirstName: 'Mai',
-      tagline: 'Our love story began with a glance and turned into a lifetime of longing.',
-      loveMessage: 'I love you more than words can express. You are my forever. Every moment with you is a treasure, and I cherish every memory we create together.',
-      startDate: new Date('2024-01-01'),
+    // Check if admin user exists
+    const existingAdmin = await User.findOne({ email: 'admin@example.com' });
+
+    if (existingAdmin) {
+      console.log('ℹ️  Admin user already exists');
+      console.log('   Email: admin@example.com');
+      console.log('   Password: admin123\n');
+    } else {
+      // Create admin user
+      const adminUser = new User({
+        email: 'admin@example.com',
+        password: 'admin123',
+        name: 'Admin',
+      });
+
+      await adminUser.save();
+      console.log('✅ Admin user created successfully!\n');
+      console.log('📝 Admin Credentials:');
+      console.log('   Email: admin@example.com');
+      console.log('   Password: admin123\n');
+    }
+
+    // Create test user
+    const existingTestUser = await User.findOne({ email: 'test@example.com' });
+
+    if (existingTestUser) {
+      console.log('ℹ️  Test user already exists');
+      console.log('   Email: test@example.com');
+      console.log('   Password: test123\n');
+    } else {
+      const testUser = new User({
+        email: 'test@example.com',
+        password: 'test123',
+        name: 'Test User',
+      });
+
+      await testUser.save();
+      console.log('✅ Test user created successfully!\n');
+      console.log('📝 Test User Credentials:');
+      console.log('   Email: test@example.com');
+      console.log('   Password: test123\n');
+    }
+
+    // List all users
+    const allUsers = await User.find({}, { email: 1, name: 1, createdAt: 1 });
+    console.log('📊 All Users in Database:');
+    allUsers.forEach((user, index) => {
+      console.log(`   ${index + 1}. ${user.name} (${user.email})`);
     });
 
-    await content.save();
-    console.log('✅ Default content created');
-
-    console.log('\n🎉 Database seeded successfully!');
-    console.log('Demo credentials:');
-    console.log('  Email: admin@example.com');
-    console.log('  Password: admin123');
-
+    console.log('\n✅ Database seeding completed!');
     process.exit(0);
   } catch (error) {
-    console.error('Seed error:', error);
+    console.error('❌ Error seeding database:', error.message);
     process.exit(1);
   }
 }
 
-seed();
+seedDatabase();

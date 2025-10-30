@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ImageCropper from './ImageCropper';
 
-export default function AdminDashboard() {
+export default function AdminDashboardDemo() {
   const router = useRouter();
   const [content, setContent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,7 @@ export default function AdminDashboard() {
 
   const fetchContent = async () => {
     try {
-      const response = await fetch('/api/content');
+      const response = await fetch('/api/content-demo');
       const data = await response.json();
       setContent(data);
       setMaleFirstName(data.maleFirstName || 'Ahmed');
@@ -36,6 +36,7 @@ export default function AdminDashboard() {
       setStartDate(data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '');
     } catch (error) {
       console.error('Failed to fetch content:', error);
+      setMessage('❌ Failed to load content');
     } finally {
       setLoading(false);
     }
@@ -44,7 +45,7 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    router.push('/admin/login');
+    router.push('/admin/login-demo');
   };
 
   const handleSaveContent = async () => {
@@ -68,7 +69,7 @@ export default function AdminDashboard() {
         startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
       };
 
-      const response = await fetch('/api/content', {
+      const response = await fetch('/api/content-demo', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -107,31 +108,24 @@ export default function AdminDashboard() {
     setMessage('');
 
     try {
-      const token = localStorage.getItem('token');
+      // For demo, just add placeholder images
+      const newImages = Array.from(files).map((file, index) => ({
+        url: URL.createObjectURL(file),
+        uploadedAt: new Date(),
+        name: file.name,
+      }));
 
-      for (let file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
+      const updatedContent = {
+        ...content,
+        images: [...(content.images || []), ...newImages],
+      };
 
-        const response = await fetch('/api/upload/image', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to upload image');
-        }
-      }
-
-      await fetchContent();
-      setMessage('✅ Images uploaded successfully!');
+      setContent(updatedContent);
+      setMessage('✅ Images added successfully! (Demo mode - not saved)');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Upload error:', error);
-      setMessage('❌ Failed to upload images');
+      setMessage('❌ Failed to add images');
     } finally {
       setSaving(false);
       e.target.value = '';
@@ -146,28 +140,22 @@ export default function AdminDashboard() {
     setMessage('');
 
     try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/upload/song', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
+      // For demo, just add placeholder song
+      const updatedContent = {
+        ...content,
+        song: {
+          url: URL.createObjectURL(file),
+          uploadedAt: new Date(),
+          name: file.name,
         },
-        body: formData,
-      });
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to upload song');
-      }
-
-      await fetchContent();
-      setMessage('✅ Song uploaded successfully!');
+      setContent(updatedContent);
+      setMessage('✅ Song added successfully! (Demo mode - not saved)');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Upload error:', error);
-      setMessage('❌ Failed to upload song');
+      setMessage('❌ Failed to add song');
     } finally {
       setSaving(false);
       e.target.value = '';
@@ -182,28 +170,22 @@ export default function AdminDashboard() {
     setMessage('');
 
     try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/upload/cover', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
+      // For demo, just add placeholder cover
+      const updatedContent = {
+        ...content,
+        songCover: {
+          url: URL.createObjectURL(file),
+          uploadedAt: new Date(),
+          name: file.name,
         },
-        body: formData,
-      });
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to upload cover');
-      }
-
-      await fetchContent();
-      setMessage('✅ Cover uploaded successfully!');
+      setContent(updatedContent);
+      setMessage('✅ Cover added successfully! (Demo mode - not saved)');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Upload error:', error);
-      setMessage('❌ Failed to upload cover');
+      setMessage('❌ Failed to add cover');
     } finally {
       setSaving(false);
       e.target.value = '';
@@ -213,51 +195,19 @@ export default function AdminDashboard() {
   const handleDeleteImage = async (index) => {
     if (!confirm('Are you sure you want to delete this image?')) return;
 
-    setSaving(true);
-    setMessage('');
-
     try {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        setMessage('❌ Not authenticated. Please login again.');
-        setSaving(false);
-        return;
-      }
-
-      // Get the image URL to delete from storage
-      const imageToDelete = content.images[index];
-      console.log('Deleting image:', imageToDelete);
-
-      // Create updated images array without the deleted image
       const updatedImages = content.images.filter((_, i) => i !== index);
+      const updatedContent = {
+        ...content,
+        images: updatedImages,
+      };
 
-      // Send only the images array to update
-      const response = await fetch('/api/content', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          images: updatedImages,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete image');
-      }
-
-      // Refresh content from server
-      await fetchContent();
-      setMessage('✅ Image deleted successfully!');
+      setContent(updatedContent);
+      setMessage('✅ Image deleted successfully! (Demo mode - not saved)');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Delete error:', error);
-      setMessage(`❌ Failed to delete image: ${error.message}`);
-    } finally {
-      setSaving(false);
+      setMessage('❌ Failed to delete image');
     }
   };
 
@@ -266,29 +216,26 @@ export default function AdminDashboard() {
     setMessage('');
 
     try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      formData.append('file', croppedBlob, 'cropped-image.jpg');
+      const url = URL.createObjectURL(croppedBlob);
+      const updatedContent = {
+        ...content,
+        images: [
+          ...(content.images || []),
+          {
+            url,
+            uploadedAt: new Date(),
+            name: 'cropped-image.jpg',
+          },
+        ],
+      };
 
-      const response = await fetch('/api/upload/image', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload cropped image');
-      }
-
-      await fetchContent();
+      setContent(updatedContent);
       setShowCropper(false);
-      setMessage('✅ Image cropped and uploaded successfully!');
+      setMessage('✅ Image cropped and added successfully! (Demo mode - not saved)');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Crop upload error:', error);
-      setMessage('❌ Failed to upload cropped image');
+      setMessage('❌ Failed to crop image');
     } finally {
       setSaving(false);
     }
@@ -310,7 +257,10 @@ export default function AdminDashboard() {
       {/* Header */}
       <header className="bg-gradient-to-r from-rose-600 to-pink-600 text-white py-6 px-4 sm:px-6 lg:px-8 shadow-lg">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <div>
+            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            <p className="text-xs text-white/80 mt-1">🔧 Demo Mode (No MongoDB)</p>
+          </div>
           <button
             onClick={handleLogout}
             className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-smooth"
@@ -328,6 +278,13 @@ export default function AdminDashboard() {
             {message}
           </div>
         )}
+
+        {/* Demo Warning */}
+        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-blue-600">
+            ℹ️ <strong>Demo Mode:</strong> This dashboard works without MongoDB. Changes are stored in memory only and will be lost on page refresh.
+          </p>
+        </div>
 
         {/* Tabs */}
         <div className="flex gap-4 mb-8 flex-wrap">

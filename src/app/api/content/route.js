@@ -50,6 +50,7 @@ export async function PUT(req) {
     await dbConnect();
 
     const body = await req.json();
+    console.log('Update body received:', Object.keys(body));
 
     let content = await Content.findOne();
 
@@ -58,18 +59,38 @@ export async function PUT(req) {
     }
 
     // Update only the fields provided
-    if (body.maleFirstName) content.maleFirstName = body.maleFirstName;
-    if (body.femaleFirstName) content.femaleFirstName = body.femaleFirstName;
-    if (body.tagline) content.tagline = body.tagline;
-    if (body.loveMessage) content.loveMessage = body.loveMessage;
-    if (body.startDate) content.startDate = body.startDate;
-    if (body.images) content.images = body.images;
+    if (body.maleFirstName !== undefined) {
+      content.maleFirstName = body.maleFirstName;
+      console.log('Updated maleFirstName');
+    }
+    if (body.femaleFirstName !== undefined) {
+      content.femaleFirstName = body.femaleFirstName;
+      console.log('Updated femaleFirstName');
+    }
+    if (body.tagline !== undefined) {
+      content.tagline = body.tagline;
+      console.log('Updated tagline');
+    }
+    if (body.loveMessage !== undefined) {
+      content.loveMessage = body.loveMessage;
+      console.log('Updated loveMessage');
+    }
+    if (body.startDate !== undefined) {
+      content.startDate = body.startDate;
+      console.log('Updated startDate');
+    }
+    if (Array.isArray(body.images)) {
+      content.images = body.images;
+      console.log('Updated images array, new length:', body.images.length);
+    }
 
     await content.save();
+    console.log('Content saved successfully');
 
     return Response.json(content, { status: 200 });
   } catch (error) {
     console.error('Update content error:', error);
+    console.error('Error message:', error.message);
     return Response.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }
