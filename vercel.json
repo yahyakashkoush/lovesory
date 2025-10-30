@@ -5,18 +5,9 @@
   "framework": "nextjs",
   "regions": ["iad1"],
   "env": {
-    "MONGODB_URI": {
-      "description": "MongoDB connection string",
-      "required": true
-    },
-    "JWT_SECRET": {
-      "description": "JWT secret key for authentication",
-      "required": true
-    },
-    "NEXT_PUBLIC_API_URL": {
-      "description": "Public API URL",
-      "required": true
-    }
+    "MONGODB_URI": "@mongodb_uri",
+    "JWT_SECRET": "@jwt_secret",
+    "NEXT_PUBLIC_API_URL": "@next_public_api_url"
   },
   "functions": {
     "src/app/api/**/*.js": {
