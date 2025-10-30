@@ -58,12 +58,16 @@ export async function DELETE(req) {
 
     // Remove the image at the specified index
     console.log('Before splice - images count:', content.images.length);
-    content.images.splice(imageIndex, 1);
-    console.log('After splice - images count:', content.images.length);
-
-    // Mark the array as modified
+    
+    // Create new array without the image
+    const newImages = content.images.filter((_, i) => i !== imageIndex);
+    console.log('After filter - images count:', newImages.length);
+    
+    // Replace the entire images array
+    content.images = newImages;
     content.markModified('images');
     
+    console.log('Saving content...');
     const savedContent = await content.save();
     console.log('Content saved successfully');
     console.log('Saved images count:', savedContent.images.length);
@@ -73,7 +77,6 @@ export async function DELETE(req) {
         success: true,
         message: 'Image deleted successfully',
         imagesCount: savedContent.images.length,
-        images: savedContent.images,
       },
       { status: 200 }
     );
