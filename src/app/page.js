@@ -14,17 +14,13 @@ export default function Home() {
   useEffect(() => {
     let isMounted = true;
     let intervalId = null;
-    let lastETag = null;
+    let lastDataHash = null;
 
     const fetchContent = async () => {
       try {
         // Generate unique URL to bypass ALL caching
         const timestamp = Date.now();
-        const random = Math.random();
-        const unique = Math.random().toString(36).substring(7);
-        const url = `/api/content?t=${timestamp}&r=${random}&u=${unique}&nocache=${Date.now()}`;
-
-        console.log('[Home] Fetching FRESH content from MongoDB:', url);
+        const url = `/api/content?t=${timestamp}&nocache=${Date.now()}`;
 
         const response = await fetch(url, {
           method: 'GET',
@@ -44,17 +40,27 @@ export default function Home() {
         }
 
         const data = await response.json();
-        const newETag = response.headers.get('ETag');
         
-        console.log('[Home] FRESH data from MongoDB:', data);
-        console.log('[Home] ETag:', newETag, 'Previous:', lastETag);
+        // Create a hash of the data to detect changes
+        const dataHash = JSON.stringify({
+          maleFirstName: data.maleFirstName,
+          femaleFirstName: data.femaleFirstName,
+          tagline: data.tagline,
+          loveMessage: data.loveMessage,
+          imagesCount: data.images?.length || 0,
+          songFilename: data.song?.filename,
+          coverFilename: data.songCover?.filename,
+          startDate: data.startDate,
+        });
 
-        // Always update if ETag changed or if it's the first load
-        if (isMounted && (newETag !== lastETag || !content)) {
+        console.log('[Home] FRESH data from MongoDB');
+
+        // Update if data changed or if it's the first load
+        if (isMounted && (dataHash !== lastDataHash || !content)) {
+          console.log('[Home] Data changed, updating UI');
           setContent(data);
-          lastETag = newETag;
+          lastDataHash = dataHash;
           setLoading(false);
-          console.log('[Home] Content updated due to ETag change');
         }
       } catch (error) {
         console.error('[Home] Error fetching content:', error);

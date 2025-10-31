@@ -1,5 +1,4 @@
-import dbConnect from '@/lib/mongodb';
-import Content from '@/models/Content';
+import { getContentCollection } from '@/lib/mongodb-direct';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
 
 export async function POST(req) {
@@ -21,17 +20,17 @@ export async function POST(req) {
       );
     }
 
-    await dbConnect();
+    const collection = await getContentCollection();
 
     // Get all documents
-    const allDocs = await Content.find({});
-    console.log('Total documents found:', allDocs.length);
+    const allDocs = await collection.find({}).toArray();
+    console.log('[cleanup-duplicates] Total documents found:', allDocs.length);
 
     // Keep only the first document, delete all others
     if (allDocs.length > 1) {
       const firstDocId = allDocs[0]._id;
-      const result = await Content.deleteMany({ _id: { $ne: firstDocId } });
-      console.log('Deleted documents:', result.deletedCount);
+      const result = await collection.deleteMany({ _id: { $ne: firstDocId } });
+      console.log('[cleanup-duplicates] Deleted documents:', result.deletedCount);
 
       return Response.json(
         {
@@ -43,7 +42,7 @@ export async function POST(req) {
         { status: 200 }
       );
     } else if (allDocs.length === 1) {
-      console.log('Only one document exists, no cleanup needed');
+      console.log('[cleanup-duplicates] Only one document exists, no cleanup needed');
       return Response.json(
         {
           success: true,
@@ -55,21 +54,34 @@ export async function POST(req) {
       );
     } else {
       // No documents, create one
-      console.log('No documents found, creating one...');
-      const newContent = new Content();
-      await newContent.save();
+      console.log('[cleanup-duplicates] No documents found, creating one...');
+      const newDoc = {
+        maleFirstName: 'Ahmed',
+        femaleFirstName: 'Mai',
+        tagline: 'Our love story began with a glance and turned into a lifetime of longing.',
+        loveMessage: 'I love you more than words can express. You are my forever.',
+        images: [],
+        song: {},
+        songCover: {},
+        startDate: new Date('2024-01-01'),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const result = await collection.insertOne(newDoc);
+      console.log('[cleanup-duplicates] Created first document:', result.insertedId);
+      
       return Response.json(
         {
           success: true,
           message: 'Created first document',
           deletedCount: 0,
-          remainingDocId: newContent._id,
+          remainingDocId: result.insertedId,
         },
         { status: 200 }
       );
     }
   } catch (error) {
-    console.error('Cleanup error:', error);
+    console.error('[cleanup-duplicates] Error:', error);
     return Response.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

@@ -23,11 +23,9 @@ export default function AdminDashboard() {
   const fetchContent = async (skipFormUpdate = false) => {
     try {
       const timestamp = Date.now();
-      const random = Math.random();
-      const unique = Math.random().toString(36).substring(7);
-      const url = `/api/content?t=${timestamp}&r=${random}&u=${unique}&nocache=${Date.now()}`;
+      const url = `/api/content?t=${timestamp}&nocache=${Date.now()}`;
 
-      console.log('[AdminDashboard] Fetching FRESH content from MongoDB:', url);
+      console.log('[AdminDashboard] Fetching FRESH content from MongoDB');
 
       const response = await fetch(url, {
         method: 'GET',
@@ -47,7 +45,11 @@ export default function AdminDashboard() {
       }
 
       const data = await response.json();
-      console.log('[AdminDashboard] FRESH data from MongoDB:', data);
+      console.log('[AdminDashboard] FRESH data from MongoDB:', {
+        maleFirstName: data.maleFirstName,
+        femaleFirstName: data.femaleFirstName,
+        imagesCount: data.images?.length || 0
+      });
 
       setContent(data);
       
