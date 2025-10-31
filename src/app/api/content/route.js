@@ -13,24 +13,32 @@ export async function GET(req) {
       await content.save();
     }
 
-    // Add strong cache-busting headers
+    // Add EXTREMELY strong cache-busting headers
     const headers = new Headers();
-    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');
     headers.set('Pragma', 'no-cache');
-    headers.set('Expires', '0');
+    headers.set('Expires', '-1');
     headers.set('Surrogate-Control', 'no-store');
-    headers.set('Content-Type', 'application/json');
+    headers.set('Content-Type', 'application/json; charset=utf-8');
+    headers.set('X-Content-Type-Options', 'nosniff');
+    headers.set('X-Frame-Options', 'DENY');
+    headers.set('ETag', `"${Date.now()}"`);
+    headers.set('Last-Modified', new Date().toUTCString());
+    headers.set('Vary', '*');
 
-    return Response.json(content, { 
+    return new Response(JSON.stringify(content), { 
       status: 200,
       headers: headers
     });
   } catch (error) {
     console.error('Get content error:', error);
-    return Response.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache, must-revalidate'
+      }
+    });
   }
 }
 

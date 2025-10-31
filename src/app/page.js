@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useFreshContent } from '@/hooks/useFreshContent';
 import Hero from '@/components/Hero';
 import Music from '@/components/Music';
 import Gallery from '@/components/Gallery';
@@ -8,46 +8,7 @@ import Message from '@/components/Message';
 import Footer from '@/components/Footer';
 
 export default function Home() {
-  const [content, setContent] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchContent = async () => {
-      try {
-        // Add timestamp to force fresh request
-        const timestamp = Date.now();
-        const response = await fetch(`/api/content?t=${timestamp}`, {
-          method: 'GET',
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate, proxy-revalidate, max-age=0',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-            'Surrogate-Control': 'no-store'
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('Content fetched:', data);
-        setContent(data);
-      } catch (error) {
-        console.error('Failed to fetch content:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchContent();
-
-    // Poll for updates every 2 seconds for real-time updates
-    const interval = setInterval(fetchContent, 2000);
-
-    return () => clearInterval(interval);
-  }, []);
+  const { content, loading } = useFreshContent();
 
   if (loading) {
     return (

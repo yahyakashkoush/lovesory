@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFreshContent } from '@/hooks/useFreshContent';
 import ImageCropper from './ImageCropper';
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [content, setContent] = useState(null);
+  const { content, loading: contentLoading, refresh: refreshContent } = useFreshContent();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -21,41 +22,15 @@ export default function AdminDashboard() {
   const [startDate, setStartDate] = useState('');
 
   useEffect(() => {
-    fetchContent();
-  }, []);
-
-  const fetchContent = async () => {
-    try {
-      const timestamp = Date.now();
-      const response = await fetch(`/api/content?t=${timestamp}`, {
-        method: 'GET',
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate, proxy-revalidate, max-age=0',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          'Surrogate-Control': 'no-store'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('Admin Dashboard - Content fetched:', data);
-      setContent(data);
-      setMaleFirstName(data.maleFirstName || 'Ahmed');
-      setFemaleFirstName(data.femaleFirstName || 'Mai');
-      setTagline(data.tagline || '');
-      setLoveMessage(data.loveMessage || '');
-      setStartDate(data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '');
-    } catch (error) {
-      console.error('Failed to fetch content:', error);
-    } finally {
+    if (content) {
+      setMaleFirstName(content.maleFirstName || 'Ahmed');
+      setFemaleFirstName(content.femaleFirstName || 'Mai');
+      setTagline(content.tagline || '');
+      setLoveMessage(content.loveMessage || '');
+      setStartDate(content.startDate ? new Date(content.startDate).toISOString().split('T')[0] : '');
       setLoading(false);
     }
-  };
+  }, [content]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -145,7 +120,7 @@ export default function AdminDashboard() {
         }
       }
 
-      await fetchContent();
+      await refreshContent();
       setMessage('✅ Images uploaded successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
@@ -181,7 +156,7 @@ export default function AdminDashboard() {
         throw new Error('Failed to upload song');
       }
 
-      await fetchContent();
+      await refreshContent();
       setMessage('✅ Song uploaded successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
@@ -217,7 +192,7 @@ export default function AdminDashboard() {
         throw new Error('Failed to upload cover');
       }
 
-      await fetchContent();
+      await refreshContent();
       setMessage('✅ Cover uploaded successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
@@ -251,13 +226,6 @@ export default function AdminDashboard() {
       console.log('Deleting image at index:', index);
       console.log('Current images count:', content.images.length);
 
-      // Delete locally first for immediate UI feedback
-      const updatedImages = content.images.filter((_, i) => i !== index);
-      setContent({
-        ...content,
-        images: updatedImages,
-      });
-
       // Use dedicated delete endpoint
       const response = await fetch(`/api/content/delete-image?index=${index}`, {
         method: 'DELETE',
@@ -273,17 +241,18 @@ export default function AdminDashboard() {
       if (!response.ok) {
         console.error('Delete failed:', responseData);
         // Revert on error
-        await fetchContent();
+        await refreshContent();
         throw new Error(responseData.error || 'Failed to delete image');
       }
 
+      await refreshContent();
       setMessage('✅ Image deleted successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Delete error:', error);
       setMessage(`❌ Failed to delete image: ${error.message}`);
       // Refresh to ensure UI is in sync with server
-      await fetchContent();
+      await refreshContent();
     } finally {
       setSaving(false);
     }
@@ -310,7 +279,7 @@ export default function AdminDashboard() {
         throw new Error('Failed to upload cropped image');
       }
 
-      await fetchContent();
+      await refreshContent();
       setShowCropper(false);
       setMessage('✅ Image cropped and uploaded successfully!');
       setTimeout(() => setMessage(''), 3000);
