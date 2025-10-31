@@ -3,7 +3,7 @@ import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
 
 export async function GET(req) {
   try {
-    console.log('[GET /api/content] Request received');
+    console.log('[GET /api/content] Request received at', new Date().toISOString());
     
     const content = await getContent();
     console.log('[GET /api/content] Content retrieved:', content ? 'Found' : 'Not found');
@@ -23,6 +23,9 @@ export async function GET(req) {
         startDate: new Date('2024-01-01'),
         createdAt: new Date(),
       });
+
+      // Wait a bit for write to propagate
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const freshContent = await getContent();
       console.log('[GET /api/content] Fresh content after creation:', freshContent ? 'Found' : 'Not found');

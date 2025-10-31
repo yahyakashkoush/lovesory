@@ -135,6 +135,7 @@ export default function AdminDashboard() {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
         },
         body: JSON.stringify(payload),
       });
@@ -151,6 +152,11 @@ export default function AdminDashboard() {
       setFemaleFirstName(data.femaleFirstName);
       setTagline(data.tagline);
       setLoveMessage(data.loveMessage);
+      
+      // Refresh content from database to ensure sync
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await fetchContent(true);
+      
       setMessage('✅ Content saved successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {

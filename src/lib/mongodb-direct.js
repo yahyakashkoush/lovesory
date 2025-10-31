@@ -17,7 +17,7 @@ export async function connectToDatabase() {
       await cachedDb.admin().ping();
       return { client: cachedClient, db: cachedDb };
     } catch (error) {
-      console.error('Cached connection failed, reconnecting:', error.message);
+      console.error('[MongoDB] Cached connection failed, reconnecting:', error.message);
       cachedClient = null;
       cachedDb = null;
     }
@@ -29,6 +29,9 @@ export async function connectToDatabase() {
     minPoolSize: 2,
     retryWrites: true,
     w: 'majority',
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+    connectTimeoutMS: 15000,
   });
 
   try {
@@ -57,8 +60,14 @@ export async function getContentCollection() {
 export async function getContent() {
   try {
     const collection = await getContentCollection();
-    // Use readPreference to ensure fresh read
-    const content = await collection.findOne({}, { readPreference: 'primary' });
+    // Use readPreference to ensure fresh read from primary
+    const content = await collection.findOne(
+      {},
+      { 
+        readPreference: 'primary',
+        readConcern: { level: 'majority' }
+      }
+    );
     console.log('[getContent] Retrieved:', content ? 'Found' : 'Not found');
     return content;
   } catch (error) {
@@ -81,7 +90,10 @@ export async function updateContent(data) {
           updatedAt: new Date() 
         } 
       },
-      { upsert: true }
+      { 
+        upsert: true,
+        writeConcern: { w: 'majority', j: true }
+      }
     );
     
     console.log('[updateContent] Update result:', {
@@ -90,9 +102,19 @@ export async function updateContent(data) {
       upsertedId: result.upsertedId
     });
     
+    // Force a fresh read after update to ensure data consistency
+    // Wait a bit for write to propagate
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     return result;
   } catch (error) {
     console.error('[updateContent] Error:', error);
     throw error;
   }
+}
+
+export function clearConnectionCache() {
+  console.log('[MongoDB] Clearing connection cache');
+  cachedClient = null;
+  cachedDb = null;
 }
