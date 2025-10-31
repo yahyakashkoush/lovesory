@@ -4,17 +4,23 @@ import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
 
 export async function GET(req) {
   try {
-    // ALWAYS reconnect to ensure fresh data
+    // CRITICAL: Always reconnect to ensure fresh data from MongoDB
     await dbConnect();
 
-    // Clear Mongoose query cache by using lean() and exec()
-    // This forces a fresh read from MongoDB
-    const content = await Content.findOne().lean().exec();
+    // Get the MongoDB collection directly to bypass Mongoose cache completely
+    const db = require('mongoose').connection.db;
+    const collection = db.collection('contents');
+    
+    // Query directly from MongoDB, not through Mongoose
+    const content = await collection.findOne({});
 
     if (!content) {
+      // Create default content if none exists
       const newContent = new Content();
       await newContent.save();
-      const saved = await Content.findOne().lean().exec();
+      
+      // Read fresh from MongoDB collection
+      const saved = await collection.findOne({});
       
       const headers = new Headers();
       headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');
@@ -23,7 +29,6 @@ export async function GET(req) {
       headers.set('Surrogate-Control', 'no-store');
       headers.set('Content-Type', 'application/json; charset=utf-8');
       headers.set('X-Cache-Bypass', Date.now().toString());
-      headers.set('ETag', `"${Date.now()}-${JSON.stringify(saved).length}"`);
       headers.set('Last-Modified', new Date().toUTCString());
       headers.set('Vary', '*');
 
@@ -41,7 +46,6 @@ export async function GET(req) {
     headers.set('Surrogate-Control', 'no-store');
     headers.set('Content-Type', 'application/json; charset=utf-8');
     headers.set('X-Cache-Bypass', Date.now().toString());
-    headers.set('ETag', `"${Date.now()}-${JSON.stringify(content).length}"`);
     headers.set('Last-Modified', new Date().toUTCString());
     headers.set('Vary', '*');
 

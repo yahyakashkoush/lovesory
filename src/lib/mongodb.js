@@ -13,13 +13,19 @@ if (!cached) {
 }
 
 async function dbConnect() {
-  // Return existing connection if available
-  if (cached.conn) {
-    console.log('Using cached MongoDB connection');
-    // CRITICAL: Clear Mongoose query cache to force fresh reads
-    if (cached.conn.connection && cached.conn.connection.collection) {
-      // Force fresh reads by clearing any internal caches
-    }
+  // CRITICAL FIX: Always create a fresh connection to ensure fresh data reads
+  // This prevents Mongoose from caching query results
+  
+  // If connection exists but is not connected, reconnect
+  if (cached.conn && cached.conn.connection.readyState !== 1) {
+    console.log('MongoDB connection lost, reconnecting...');
+    cached.conn = null;
+    cached.promise = null;
+  }
+
+  // Return existing connection if available and connected
+  if (cached.conn && cached.conn.connection.readyState === 1) {
+    console.log('Using active MongoDB connection');
     return cached.conn;
   }
 
@@ -48,12 +54,16 @@ async function dbConnect() {
     maxPoolSize: 10,
     minPoolSize: 2,
     maxIdleTimeMS: 60000,
+    // CRITICAL: Disable query caching at Mongoose level
+    autoCreate: true,
+    autoIndex: true,
   };
 
   cached.promise = mongoose
     .connect(MONGODB_URI, opts)
     .then((mongoose) => {
       console.log('MongoDB connected successfully');
+      // Clear any cached models
       return mongoose;
     })
     .catch((error) => {

@@ -80,8 +80,10 @@ export async function PUT(req) {
       startDate: savedContent.startDate,
     });
 
-    // Read fresh from database to confirm - use lean() and exec() to bypass cache
-    const freshContent = await Content.findOne().lean().exec();
+    // Read fresh from MongoDB collection directly to bypass Mongoose cache
+    const db = require('mongoose').connection.db;
+    const collection = db.collection('contents');
+    const freshContent = await collection.findOne({});
 
     return Response.json(
       {

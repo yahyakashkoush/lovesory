@@ -89,12 +89,12 @@ export default function AdminDashboard() {
         await fetchContent();
       }
 
-      // Poll every 2 seconds for real-time updates (reduced from 500ms to avoid race conditions)
+      // Poll every 1 second for real-time updates
       intervalId = setInterval(() => {
         if (isMounted) {
           fetchContent();
         }
-      }, 2000);
+      }, 1000);
     };
 
     startPolling();

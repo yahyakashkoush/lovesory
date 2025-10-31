@@ -95,8 +95,10 @@ export async function DELETE(req) {
     console.log('Content saved successfully');
     console.log('Saved images count:', savedContent.images.length);
 
-    // Read fresh from database to confirm - use exec() to bypass cache
-    const freshContent = await Content.findOne().exec();
+    // Read fresh from MongoDB collection directly to bypass Mongoose cache
+    const db = require('mongoose').connection.db;
+    const collection = db.collection('contents');
+    const freshContent = await collection.findOne({});
     console.log('Fresh content images count:', freshContent.images.length);
 
     return Response.json(
@@ -105,7 +107,13 @@ export async function DELETE(req) {
         message: 'Image deleted successfully',
         imagesCount: freshContent.images.length,
       },
-      { status: 200 }
+      { status: 200,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
+          'Pragma': 'no-cache',
+          'Expires': '-1',
+        }
+      }
     );
   } catch (error) {
     console.error('Delete image error:', error);
