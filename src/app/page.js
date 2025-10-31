@@ -67,8 +67,8 @@ export default function Home() {
     // Fetch immediately
     fetchContent();
 
-    // Poll every 3 seconds for real-time updates (reduced frequency to avoid conflicts)
-    intervalId = setInterval(fetchContent, 3000);
+    // Poll every 2 seconds for real-time updates
+    intervalId = setInterval(fetchContent, 2000);
 
     return () => {
       isMounted = false;

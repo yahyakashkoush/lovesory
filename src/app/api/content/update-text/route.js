@@ -99,9 +99,21 @@ export async function PUT(req) {
     });
 
     // Read fresh from MongoDB collection directly to bypass Mongoose cache
-    const db = require('mongoose').connection.db;
+    const mongoose = require('mongoose');
+    const db = mongoose.connection.db;
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
+    
     const collection = db.collection('contents');
     const freshContent = await collection.findOne({});
+
+    console.log('[UPDATE-TEXT] Fresh content after save:', {
+      maleFirstName: freshContent.maleFirstName,
+      femaleFirstName: freshContent.femaleFirstName,
+      tagline: freshContent.tagline?.substring(0, 50),
+      loveMessage: freshContent.loveMessage?.substring(0, 50),
+    });
 
     return Response.json(
       {

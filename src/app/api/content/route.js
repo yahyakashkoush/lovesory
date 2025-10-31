@@ -3,9 +3,12 @@ import Content from '@/models/Content';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
 import mongoose from 'mongoose';
 
-// Helper function to get fresh data directly from MongoDB
-async function getFreshContent() {
+export async function GET(req) {
   try {
+    // CRITICAL: Always reconnect to ensure fresh data from MongoDB
+    await dbConnect();
+
+    // Get fresh data directly from MongoDB collection, bypassing ALL Mongoose caching
     const db = mongoose.connection.db;
     if (!db) {
       throw new Error('Database connection not available');
@@ -13,20 +16,6 @@ async function getFreshContent() {
     
     const collection = db.collection('contents');
     const content = await collection.findOne({});
-    return content;
-  } catch (error) {
-    console.error('Error getting fresh content:', error);
-    return null;
-  }
-}
-
-export async function GET(req) {
-  try {
-    // CRITICAL: Always reconnect to ensure fresh data from MongoDB
-    await dbConnect();
-
-    // Get fresh data directly from MongoDB, bypassing ALL caching
-    const content = await getFreshContent();
 
     if (!content) {
       // Create default content if none exists
@@ -34,7 +23,7 @@ export async function GET(req) {
       await newContent.save();
       
       // Read fresh from MongoDB collection
-      const saved = await getFreshContent();
+      const freshContent = await collection.findOne({});
       
       const headers = new Headers();
       headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');
@@ -46,7 +35,7 @@ export async function GET(req) {
       headers.set('Last-Modified', new Date().toUTCString());
       headers.set('Vary', '*');
 
-      return new Response(JSON.stringify(saved), { 
+      return new Response(JSON.stringify(freshContent), { 
         status: 200,
         headers: headers
       });
@@ -62,6 +51,14 @@ export async function GET(req) {
     headers.set('X-Cache-Bypass', Date.now().toString());
     headers.set('Last-Modified', new Date().toUTCString());
     headers.set('Vary', '*');
+
+    console.log('[GET] Returning content:', {
+      maleFirstName: content.maleFirstName,
+      femaleFirstName: content.femaleFirstName,
+      tagline: content.tagline?.substring(0, 50),
+      loveMessage: content.loveMessage?.substring(0, 50),
+      imagesCount: content.images?.length || 0
+    });
 
     return new Response(JSON.stringify(content), { 
       status: 200,
