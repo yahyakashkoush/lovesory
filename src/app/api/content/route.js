@@ -4,14 +4,32 @@ import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
 
 export async function GET(req) {
   try {
+    // ALWAYS reconnect to ensure fresh data
     await dbConnect();
 
-    // SINGLETON: Always use the first document (there should only be one)
-    let content = await Content.findOne();
+    // ALWAYS read fresh from database - no caching
+    const content = await Content.findOne().lean();
 
     if (!content) {
-      content = new Content();
-      await content.save();
+      const newContent = new Content();
+      await newContent.save();
+      const saved = await Content.findOne().lean();
+      
+      const headers = new Headers();
+      headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');
+      headers.set('Pragma', 'no-cache');
+      headers.set('Expires', '-1');
+      headers.set('Surrogate-Control', 'no-store');
+      headers.set('Content-Type', 'application/json; charset=utf-8');
+      headers.set('X-Cache-Bypass', Date.now().toString());
+      headers.set('ETag', `"${Date.now()}"`);
+      headers.set('Last-Modified', new Date().toUTCString());
+      headers.set('Vary', '*');
+
+      return new Response(JSON.stringify(saved), { 
+        status: 200,
+        headers: headers
+      });
     }
 
     // Add EXTREMELY strong cache-busting headers
@@ -21,8 +39,7 @@ export async function GET(req) {
     headers.set('Expires', '-1');
     headers.set('Surrogate-Control', 'no-store');
     headers.set('Content-Type', 'application/json; charset=utf-8');
-    headers.set('X-Content-Type-Options', 'nosniff');
-    headers.set('X-Frame-Options', 'DENY');
+    headers.set('X-Cache-Bypass', Date.now().toString());
     headers.set('ETag', `"${Date.now()}"`);
     headers.set('Last-Modified', new Date().toUTCString());
     headers.set('Vary', '*');

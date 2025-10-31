@@ -70,14 +70,18 @@ export async function POST(req) {
     content.markModified('images');
 
     console.log('Saving content with', content.images.length, 'images');
-    await content.save();
-    console.log('Content saved successfully');
+    const savedContent = await content.save();
+    console.log('Content saved successfully with', savedContent.images.length, 'images');
+
+    // Read fresh from database to confirm
+    const freshContent = await Content.findOne().lean();
+    console.log('Fresh content has', freshContent.images.length, 'images');
 
     return Response.json(
       {
         success: true,
         message: 'Image uploaded successfully',
-        imagesCount: content.images.length,
+        imagesCount: freshContent.images.length,
       },
       { status: 200 }
     );

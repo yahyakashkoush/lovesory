@@ -95,11 +95,15 @@ export async function DELETE(req) {
     console.log('Content saved successfully');
     console.log('Saved images count:', savedContent.images.length);
 
+    // Read fresh from database to confirm
+    const freshContent = await Content.findOne().lean();
+    console.log('Fresh content images count:', freshContent.images.length);
+
     return Response.json(
       {
         success: true,
         message: 'Image deleted successfully',
-        imagesCount: savedContent.images.length,
+        imagesCount: freshContent.images.length,
       },
       { status: 200 }
     );

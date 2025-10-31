@@ -62,13 +62,17 @@ export async function POST(req) {
     };
 
     content.markModified('song');
-    await content.save();
+    const savedContent = await content.save();
+    console.log('Song saved successfully');
+
+    // Read fresh from database to confirm
+    const freshContent = await Content.findOne().lean();
 
     return Response.json(
       {
         success: true,
         message: 'Song uploaded successfully',
-        song: content.song,
+        song: freshContent.song,
       },
       { status: 200 }
     );

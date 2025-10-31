@@ -36,25 +36,32 @@ export async function PUT(req) {
     }
 
     // Update only text fields - no images
-    if (body.maleFirstName !== undefined) {
+    let hasChanges = false;
+    
+    if (body.maleFirstName !== undefined && body.maleFirstName !== content.maleFirstName) {
       content.maleFirstName = String(body.maleFirstName).trim();
-      console.log('Updated maleFirstName');
+      console.log('Updated maleFirstName to:', content.maleFirstName);
+      hasChanges = true;
     }
-    if (body.femaleFirstName !== undefined) {
+    if (body.femaleFirstName !== undefined && body.femaleFirstName !== content.femaleFirstName) {
       content.femaleFirstName = String(body.femaleFirstName).trim();
-      console.log('Updated femaleFirstName');
+      console.log('Updated femaleFirstName to:', content.femaleFirstName);
+      hasChanges = true;
     }
-    if (body.tagline !== undefined) {
+    if (body.tagline !== undefined && body.tagline !== content.tagline) {
       content.tagline = String(body.tagline).trim();
-      console.log('Updated tagline');
+      console.log('Updated tagline to:', content.tagline);
+      hasChanges = true;
     }
-    if (body.loveMessage !== undefined) {
+    if (body.loveMessage !== undefined && body.loveMessage !== content.loveMessage) {
       content.loveMessage = String(body.loveMessage).trim();
-      console.log('Updated loveMessage');
+      console.log('Updated loveMessage to:', content.loveMessage);
+      hasChanges = true;
     }
-    if (body.startDate !== undefined) {
+    if (body.startDate !== undefined && body.startDate !== content.startDate) {
       content.startDate = new Date(body.startDate);
-      console.log('Updated startDate');
+      console.log('Updated startDate to:', content.startDate);
+      hasChanges = true;
     }
 
     // Mark fields as modified
@@ -65,16 +72,25 @@ export async function PUT(req) {
     content.markModified('startDate');
 
     const savedContent = await content.save();
-    console.log('Text content saved successfully');
+    console.log('Text content saved successfully:', {
+      maleFirstName: savedContent.maleFirstName,
+      femaleFirstName: savedContent.femaleFirstName,
+      tagline: savedContent.tagline,
+      loveMessage: savedContent.loveMessage,
+      startDate: savedContent.startDate,
+    });
+
+    // Read fresh from database to confirm
+    const freshContent = await Content.findOne().lean();
 
     return Response.json(
       {
         success: true,
-        maleFirstName: savedContent.maleFirstName,
-        femaleFirstName: savedContent.femaleFirstName,
-        tagline: savedContent.tagline,
-        loveMessage: savedContent.loveMessage,
-        startDate: savedContent.startDate,
+        maleFirstName: freshContent.maleFirstName,
+        femaleFirstName: freshContent.femaleFirstName,
+        tagline: freshContent.tagline,
+        loveMessage: freshContent.loveMessage,
+        startDate: freshContent.startDate,
       },
       { status: 200 }
     );

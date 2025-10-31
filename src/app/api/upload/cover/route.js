@@ -62,13 +62,17 @@ export async function POST(req) {
     };
 
     content.markModified('songCover');
-    await content.save();
+    const savedContent = await content.save();
+    console.log('Cover saved successfully');
+
+    // Read fresh from database to confirm
+    const freshContent = await Content.findOne().lean();
 
     return Response.json(
       {
         success: true,
         message: 'Cover uploaded successfully',
-        cover: content.songCover,
+        cover: freshContent.songCover,
       },
       { status: 200 }
     );
