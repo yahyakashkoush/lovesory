@@ -10,7 +10,20 @@ let cachedClient = null;
 let cachedDb = null;
 
 export async function connectToDatabase() {
-  // Always create a fresh connection to avoid caching issues
+  // Return cached connection if available and connected
+  if (cachedClient && cachedDb) {
+    try {
+      // Verify connection is still alive
+      await cachedDb.admin().ping();
+      return { client: cachedClient, db: cachedDb };
+    } catch (error) {
+      console.error('Cached connection failed, reconnecting:', error.message);
+      cachedClient = null;
+      cachedDb = null;
+    }
+  }
+
+  // Create new connection
   const client = new MongoClient(MONGODB_URI, {
     maxPoolSize: 10,
     minPoolSize: 2,
@@ -22,12 +35,16 @@ export async function connectToDatabase() {
     await client.connect();
     const db = client.db('test');
     
-    // Test the connection
+    // Verify connection
     await db.admin().ping();
     
+    cachedClient = client;
+    cachedDb = db;
+    
+    console.log('[MongoDB] Connected successfully');
     return { client, db };
   } catch (error) {
-    console.error('Failed to connect to MongoDB:', error);
+    console.error('[MongoDB] Connection failed:', error.message);
     throw error;
   }
 }
@@ -40,7 +57,8 @@ export async function getContentCollection() {
 export async function getContent() {
   try {
     const collection = await getContentCollection();
-    const content = await collection.findOne({});
+    // Use readPreference to ensure fresh read
+    const content = await collection.findOne({}, { readPreference: 'primary' });
     console.log('[getContent] Retrieved:', content ? 'Found' : 'Not found');
     return content;
   } catch (error) {
@@ -57,7 +75,12 @@ export async function updateContent(data) {
     
     const result = await collection.updateOne(
       {},
-      { $set: { ...data, updatedAt: new Date() } },
+      { 
+        $set: { 
+          ...data, 
+          updatedAt: new Date() 
+        } 
+      },
       { upsert: true }
     );
     
