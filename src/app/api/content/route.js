@@ -6,10 +6,15 @@ export async function GET(req) {
   try {
     await dbConnect();
 
-    let content = await Content.findOne();
+    // SINGLETON: Always use the same document with _id = 'singleton'
+    let content = await Content.findOneAndUpdate(
+      { _id: 'singleton' },
+      {},
+      { upsert: true, new: true }
+    );
 
     if (!content) {
-      content = new Content();
+      content = new Content({ _id: 'singleton' });
       await content.save();
     }
 
@@ -71,32 +76,38 @@ export async function PUT(req) {
     const body = await req.json();
     console.log('Update body received:', Object.keys(body));
 
-    let content = await Content.findOne();
+    // SINGLETON: Always use the same document with _id = 'singleton'
+    let content = await Content.findOneAndUpdate(
+      { _id: 'singleton' },
+      {},
+      { upsert: true, new: true }
+    );
 
     if (!content) {
-      content = new Content();
+      content = new Content({ _id: 'singleton' });
+      await content.save();
     }
 
     // Update only the fields provided
     if (body.maleFirstName !== undefined) {
       content.maleFirstName = body.maleFirstName;
-      console.log('Updated maleFirstName');
+      console.log('Updated maleFirstName to:', body.maleFirstName);
     }
     if (body.femaleFirstName !== undefined) {
       content.femaleFirstName = body.femaleFirstName;
-      console.log('Updated femaleFirstName');
+      console.log('Updated femaleFirstName to:', body.femaleFirstName);
     }
     if (body.tagline !== undefined) {
       content.tagline = body.tagline;
-      console.log('Updated tagline');
+      console.log('Updated tagline to:', body.tagline);
     }
     if (body.loveMessage !== undefined) {
       content.loveMessage = body.loveMessage;
-      console.log('Updated loveMessage');
+      console.log('Updated loveMessage to:', body.loveMessage);
     }
     if (body.startDate !== undefined) {
       content.startDate = body.startDate;
-      console.log('Updated startDate');
+      console.log('Updated startDate to:', body.startDate);
     }
     if (Array.isArray(body.images)) {
       // Validate and clean images array
@@ -113,10 +124,25 @@ export async function PUT(req) {
       console.log('Updated images array, new length:', validImages.length);
     }
 
-    const savedContent = await content.save();
-    console.log('Content saved successfully');
+    content.markModified('maleFirstName');
+    content.markModified('femaleFirstName');
+    content.markModified('tagline');
+    content.markModified('loveMessage');
+    content.markModified('startDate');
+    content.markModified('images');
 
-    return Response.json(savedContent, { status: 200 });
+    const savedContent = await content.save();
+    console.log('Content saved successfully to singleton document');
+
+    // Return with strong no-cache headers
+    return Response.json(savedContent, { 
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
+        'Pragma': 'no-cache',
+        'Expires': '-1',
+      }
+    });
   } catch (error) {
     console.error('Update content error:', error);
     console.error('Error message:', error.message);

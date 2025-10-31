@@ -68,6 +68,22 @@ export default function AdminDashboard() {
     let intervalId = null;
 
     const startPolling = async () => {
+      // First, cleanup any duplicate documents
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          console.log('[AdminDashboard] Running cleanup on startup...');
+          await fetch('/api/admin/cleanup-duplicates', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+        }
+      } catch (error) {
+        console.error('[AdminDashboard] Cleanup error:', error);
+      }
+
       if (isMounted) {
         await fetchContent();
       }

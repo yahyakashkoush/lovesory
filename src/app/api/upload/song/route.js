@@ -47,10 +47,16 @@ export async function POST(req) {
     const mimeType = file.type || 'audio/mpeg';
     const dataUrl = `data:${mimeType};base64,${base64}`;
 
-    let content = await Content.findOne();
+    // SINGLETON: Always use the same document with _id = 'singleton'
+    let content = await Content.findOneAndUpdate(
+      { _id: 'singleton' },
+      {},
+      { upsert: true, new: true }
+    );
 
     if (!content) {
-      content = new Content();
+      content = new Content({ _id: 'singleton' });
+      await content.save();
     }
 
     content.song = {

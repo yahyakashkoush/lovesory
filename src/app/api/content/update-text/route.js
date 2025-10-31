@@ -27,10 +27,16 @@ export async function PUT(req) {
     const body = await req.json();
     console.log('Update text body received:', Object.keys(body));
 
-    let content = await Content.findOne();
+    // SINGLETON: Always use the same document with _id = 'singleton'
+    let content = await Content.findOneAndUpdate(
+      { _id: 'singleton' },
+      {},
+      { upsert: true, new: true }
+    );
 
     if (!content) {
-      content = new Content();
+      content = new Content({ _id: 'singleton' });
+      await content.save();
     }
 
     // Update only text fields - no images
