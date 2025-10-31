@@ -80,8 +80,8 @@ export async function PUT(req) {
       startDate: savedContent.startDate,
     });
 
-    // Read fresh from database to confirm - use exec() to bypass cache
-    const freshContent = await Content.findOne().exec();
+    // Read fresh from database to confirm - use lean() and exec() to bypass cache
+    const freshContent = await Content.findOne().lean().exec();
 
     return Response.json(
       {
@@ -92,7 +92,13 @@ export async function PUT(req) {
         loveMessage: freshContent.loveMessage,
         startDate: freshContent.startDate,
       },
-      { status: 200 }
+      { status: 200,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
+          'Pragma': 'no-cache',
+          'Expires': '-1',
+        }
+      }
     );
   } catch (error) {
     console.error('Update text error:', error);

@@ -62,10 +62,11 @@ export default function AdminDashboard() {
     }
   };
 
-  // Initial fetch and polling - AGGRESSIVE polling every 500ms
+  // Initial fetch and polling - Poll every 2 seconds for real-time updates
   useEffect(() => {
     let isMounted = true;
     let intervalId = null;
+    let lastETag = null;
 
     const startPolling = async () => {
       // First, cleanup any duplicate documents
@@ -88,12 +89,12 @@ export default function AdminDashboard() {
         await fetchContent();
       }
 
-      // Poll every 500ms for real-time updates
+      // Poll every 2 seconds for real-time updates (reduced from 500ms to avoid race conditions)
       intervalId = setInterval(() => {
         if (isMounted) {
           fetchContent();
         }
-      }, 500);
+      }, 2000);
     };
 
     startPolling();

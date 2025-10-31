@@ -14,6 +14,7 @@ export default function Home() {
   useEffect(() => {
     let isMounted = true;
     let intervalId = null;
+    let lastETag = null;
 
     const fetchContent = async () => {
       try {
@@ -43,11 +44,17 @@ export default function Home() {
         }
 
         const data = await response.json();
+        const newETag = response.headers.get('ETag');
+        
         console.log('[Home] FRESH data from MongoDB:', data);
+        console.log('[Home] ETag:', newETag, 'Previous:', lastETag);
 
-        if (isMounted) {
+        // Always update if ETag changed or if it's the first load
+        if (isMounted && (newETag !== lastETag || !content)) {
           setContent(data);
+          lastETag = newETag;
           setLoading(false);
+          console.log('[Home] Content updated due to ETag change');
         }
       } catch (error) {
         console.error('[Home] Error fetching content:', error);
@@ -60,8 +67,8 @@ export default function Home() {
     // Fetch immediately
     fetchContent();
 
-    // Poll every 500ms for real-time updates
-    intervalId = setInterval(fetchContent, 500);
+    // Poll every 2 seconds for real-time updates (reduced from 500ms to avoid race conditions)
+    intervalId = setInterval(fetchContent, 2000);
 
     return () => {
       isMounted = false;

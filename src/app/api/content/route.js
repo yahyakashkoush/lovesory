@@ -7,14 +7,14 @@ export async function GET(req) {
     // ALWAYS reconnect to ensure fresh data
     await dbConnect();
 
-    // ALWAYS read fresh from database - no caching
-    // Use exec() to bypass Mongoose query caching
-    const content = await Content.findOne().exec();
+    // Clear Mongoose query cache by using lean() and exec()
+    // This forces a fresh read from MongoDB
+    const content = await Content.findOne().lean().exec();
 
     if (!content) {
       const newContent = new Content();
       await newContent.save();
-      const saved = await Content.findOne().exec();
+      const saved = await Content.findOne().lean().exec();
       
       const headers = new Headers();
       headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');
@@ -23,11 +23,11 @@ export async function GET(req) {
       headers.set('Surrogate-Control', 'no-store');
       headers.set('Content-Type', 'application/json; charset=utf-8');
       headers.set('X-Cache-Bypass', Date.now().toString());
-      headers.set('ETag', `"${Date.now()}"`);
+      headers.set('ETag', `"${Date.now()}-${JSON.stringify(saved).length}"`);
       headers.set('Last-Modified', new Date().toUTCString());
       headers.set('Vary', '*');
 
-      return new Response(JSON.stringify(saved.toObject()), { 
+      return new Response(JSON.stringify(saved), { 
         status: 200,
         headers: headers
       });
@@ -41,11 +41,11 @@ export async function GET(req) {
     headers.set('Surrogate-Control', 'no-store');
     headers.set('Content-Type', 'application/json; charset=utf-8');
     headers.set('X-Cache-Bypass', Date.now().toString());
-    headers.set('ETag', `"${Date.now()}"`);
+    headers.set('ETag', `"${Date.now()}-${JSON.stringify(content).length}"`);
     headers.set('Last-Modified', new Date().toUTCString());
     headers.set('Vary', '*');
 
-    return new Response(JSON.stringify(content.toObject()), { 
+    return new Response(JSON.stringify(content), { 
       status: 200,
       headers: headers
     });
