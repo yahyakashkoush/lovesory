@@ -46,7 +46,10 @@ const contentSchema = new mongoose.Schema(
       default: new Date('2024-01-01'),
     },
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    collection: 'contents'  // CRITICAL: Explicitly set collection name to match MongoDB
+  }
 );
 
 // Set a higher limit for document size (16MB is MongoDB default, but we can optimize)
