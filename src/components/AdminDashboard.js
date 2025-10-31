@@ -20,7 +20,7 @@ export default function AdminDashboard() {
   const [startDate, setStartDate] = useState('');
 
   // Fetch content function - ALWAYS from MongoDB, NEVER from cache
-  const fetchContent = async () => {
+  const fetchContent = async (skipFormUpdate = false) => {
     try {
       const timestamp = Date.now();
       const random = Math.random();
@@ -50,11 +50,16 @@ export default function AdminDashboard() {
       console.log('[AdminDashboard] FRESH data from MongoDB:', data);
 
       setContent(data);
-      setMaleFirstName(data.maleFirstName || 'Ahmed');
-      setFemaleFirstName(data.femaleFirstName || 'Mai');
-      setTagline(data.tagline || '');
-      setLoveMessage(data.loveMessage || '');
-      setStartDate(data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '');
+      
+      // CRITICAL: Only update form fields if not currently editing (skipFormUpdate = false)
+      if (!skipFormUpdate) {
+        setMaleFirstName(data.maleFirstName || 'Ahmed');
+        setFemaleFirstName(data.femaleFirstName || 'Mai');
+        setTagline(data.tagline || '');
+        setLoveMessage(data.loveMessage || '');
+        setStartDate(data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '');
+      }
+      
       setLoading(false);
     } catch (error) {
       console.error('[AdminDashboard] Error fetching content:', error);
@@ -62,13 +67,11 @@ export default function AdminDashboard() {
     }
   };
 
-  // Initial fetch and polling - Poll every 2 seconds for real-time updates
+  // Initial fetch only - NO polling on admin dashboard
   useEffect(() => {
     let isMounted = true;
-    let intervalId = null;
-    let lastETag = null;
 
-    const startPolling = async () => {
+    const startInitialFetch = async () => {
       // First, cleanup any duplicate documents
       try {
         const token = localStorage.getItem('token');
@@ -86,24 +89,14 @@ export default function AdminDashboard() {
       }
 
       if (isMounted) {
-        await fetchContent();
+        await fetchContent(false);
       }
-
-      // Poll every 500ms for real-time updates
-      intervalId = setInterval(() => {
-        if (isMounted) {
-          fetchContent();
-        }
-      }, 500);
     };
 
-    startPolling();
+    startInitialFetch();
 
     return () => {
       isMounted = false;
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
     };
   }, []);
 
