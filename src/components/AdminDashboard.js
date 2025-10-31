@@ -26,15 +26,24 @@ export default function AdminDashboard() {
 
   const fetchContent = async () => {
     try {
-      const response = await fetch(`/api/content?t=${Date.now()}`, {
+      const timestamp = Date.now();
+      const response = await fetch(`/api/content?t=${timestamp}`, {
+        method: 'GET',
         cache: 'no-store',
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'no-cache, no-store, must-revalidate, proxy-revalidate, max-age=0',
           'Pragma': 'no-cache',
-          'Expires': '0'
+          'Expires': '0',
+          'Surrogate-Control': 'no-store'
         }
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('Admin Dashboard - Content fetched:', data);
       setContent(data);
       setMaleFirstName(data.maleFirstName || 'Ahmed');
       setFemaleFirstName(data.femaleFirstName || 'Mai');

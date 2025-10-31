@@ -13,7 +13,18 @@ export async function GET(req) {
       await content.save();
     }
 
-    return Response.json(content, { status: 200 });
+    // Add strong cache-busting headers
+    const headers = new Headers();
+    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    headers.set('Pragma', 'no-cache');
+    headers.set('Expires', '0');
+    headers.set('Surrogate-Control', 'no-store');
+    headers.set('Content-Type', 'application/json');
+
+    return Response.json(content, { 
+      status: 200,
+      headers: headers
+    });
   } catch (error) {
     console.error('Get content error:', error);
     return Response.json(

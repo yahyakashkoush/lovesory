@@ -14,15 +14,25 @@ export default function Home() {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const response = await fetch('/api/content', {
+        // Add timestamp to force fresh request
+        const timestamp = Date.now();
+        const response = await fetch(`/api/content?t=${timestamp}`, {
+          method: 'GET',
           cache: 'no-store',
           headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Cache-Control': 'no-cache, no-store, must-revalidate, proxy-revalidate, max-age=0',
             'Pragma': 'no-cache',
-            'Expires': '0'
+            'Expires': '0',
+            'Surrogate-Control': 'no-store'
           }
         });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('Content fetched:', data);
         setContent(data);
       } catch (error) {
         console.error('Failed to fetch content:', error);
@@ -33,8 +43,8 @@ export default function Home() {
 
     fetchContent();
 
-    // Poll for updates every 5 seconds
-    const interval = setInterval(fetchContent, 5000);
+    // Poll for updates every 2 seconds for real-time updates
+    const interval = setInterval(fetchContent, 2000);
 
     return () => clearInterval(interval);
   }, []);
