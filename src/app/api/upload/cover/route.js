@@ -47,15 +47,11 @@ export async function POST(req) {
     const mimeType = file.type || 'image/jpeg';
     const dataUrl = `data:${mimeType};base64,${base64}`;
 
-    // SINGLETON: Always use the same document with _id = 'singleton'
-    let content = await Content.findOneAndUpdate(
-      { _id: 'singleton' },
-      {},
-      { upsert: true, new: true }
-    );
+    // SINGLETON: Always use the first document (there should only be one)
+    let content = await Content.findOne();
 
     if (!content) {
-      content = new Content({ _id: 'singleton' });
+      content = new Content();
       await content.save();
     }
 

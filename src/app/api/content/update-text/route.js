@@ -27,15 +27,11 @@ export async function PUT(req) {
     const body = await req.json();
     console.log('Update text body received:', Object.keys(body));
 
-    // SINGLETON: Always use the same document with _id = 'singleton'
-    let content = await Content.findOneAndUpdate(
-      { _id: 'singleton' },
-      {},
-      { upsert: true, new: true }
-    );
+    // SINGLETON: Always use the first document (there should only be one)
+    let content = await Content.findOne();
 
     if (!content) {
-      content = new Content({ _id: 'singleton' });
+      content = new Content();
       await content.save();
     }
 

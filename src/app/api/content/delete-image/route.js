@@ -42,12 +42,8 @@ export async function DELETE(req) {
       );
     }
 
-    // SINGLETON: Always use the same document with _id = 'singleton'
-    let content = await Content.findOneAndUpdate(
-      { _id: 'singleton' },
-      {},
-      { upsert: true, new: true }
-    );
+    // SINGLETON: Always use the first document (there should only be one)
+    let content = await Content.findOne();
 
     if (!content) {
       return Response.json(

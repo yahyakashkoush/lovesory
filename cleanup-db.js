@@ -90,23 +90,21 @@ async function cleanup() {
       });
     }
 
-    // Find or create singleton
-    console.log('\n🔍 Looking for singleton document...');
-    let singleton = await Content.findOne({ _id: 'singleton' });
-
-    if (!singleton) {
-      console.log('❌ Singleton not found, creating...');
-      singleton = new Content({ _id: 'singleton' });
-      await singleton.save();
-      console.log('✅ Singleton created');
+    // Keep only the first document, delete all others
+    if (allDocs.length > 1) {
+      console.log('\n🗑️  Deleting duplicate documents...');
+      const firstDocId = allDocs[0]._id;
+      const result = await Content.deleteMany({ _id: { $ne: firstDocId } });
+      console.log(`✅ Deleted ${result.deletedCount} duplicate document(s)`);
+      console.log(`✅ Keeping document with _id: ${firstDocId}`);
+    } else if (allDocs.length === 1) {
+      console.log('\n✅ Only one document exists, no cleanup needed');
     } else {
-      console.log('✅ Singleton found');
+      console.log('\n❌ No documents found, creating one...');
+      const newContent = new Content();
+      await newContent.save();
+      console.log(`✅ Created new document with _id: ${newContent._id}`);
     }
-
-    // Delete all other documents
-    console.log('\n🗑️  Deleting duplicate documents...');
-    const result = await Content.deleteMany({ _id: { $ne: 'singleton' } });
-    console.log(`✅ Deleted ${result.deletedCount} duplicate document(s)`);
 
     // Verify
     const finalCount = await Content.countDocuments({});
@@ -114,7 +112,7 @@ async function cleanup() {
 
     if (finalCount === 1) {
       console.log('✅ Database cleanup successful!');
-      console.log('✅ Only singleton document remains');
+      console.log('✅ Only one document remains');
     } else {
       console.log('⚠️  Warning: Expected 1 document, found ' + finalCount);
     }

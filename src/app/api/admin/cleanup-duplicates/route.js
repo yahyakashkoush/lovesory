@@ -27,30 +27,47 @@ export async function POST(req) {
     const allDocs = await Content.find({});
     console.log('Total documents found:', allDocs.length);
 
-    // Find or create singleton
-    let singleton = await Content.findOne({ _id: 'singleton' });
-    
-    if (!singleton) {
-      console.log('Creating singleton document...');
-      singleton = new Content({ _id: 'singleton' });
-      await singleton.save();
+    // Keep only the first document, delete all others
+    if (allDocs.length > 1) {
+      const firstDocId = allDocs[0]._id;
+      const result = await Content.deleteMany({ _id: { $ne: firstDocId } });
+      console.log('Deleted documents:', result.deletedCount);
+
+      return Response.json(
+        {
+          success: true,
+          message: 'Cleanup completed',
+          deletedCount: result.deletedCount,
+          remainingDocId: firstDocId,
+        },
+        { status: 200 }
+      );
+    } else if (allDocs.length === 1) {
+      console.log('Only one document exists, no cleanup needed');
+      return Response.json(
+        {
+          success: true,
+          message: 'No cleanup needed',
+          deletedCount: 0,
+          remainingDocId: allDocs[0]._id,
+        },
+        { status: 200 }
+      );
+    } else {
+      // No documents, create one
+      console.log('No documents found, creating one...');
+      const newContent = new Content();
+      await newContent.save();
+      return Response.json(
+        {
+          success: true,
+          message: 'Created first document',
+          deletedCount: 0,
+          remainingDocId: newContent._id,
+        },
+        { status: 200 }
+      );
     }
-
-    console.log('Singleton document ID:', singleton._id);
-
-    // Delete all other documents
-    const result = await Content.deleteMany({ _id: { $ne: 'singleton' } });
-    console.log('Deleted documents:', result.deletedCount);
-
-    return Response.json(
-      {
-        success: true,
-        message: 'Cleanup completed',
-        deletedCount: result.deletedCount,
-        singletonId: singleton._id,
-      },
-      { status: 200 }
-    );
   } catch (error) {
     console.error('Cleanup error:', error);
     return Response.json(
