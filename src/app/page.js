@@ -17,21 +17,24 @@ export default function Home() {
 
     const fetchContent = async () => {
       try {
-        // Generate unique URL to bypass cache
+        // Generate unique URL to bypass ALL caching
         const timestamp = Date.now();
         const random = Math.random();
-        const url = `/api/content?t=${timestamp}&r=${random}&cache=false`;
+        const unique = Math.random().toString(36).substring(7);
+        const url = `/api/content?t=${timestamp}&r=${random}&u=${unique}&nocache=${Date.now()}`;
 
-        console.log('[Home] Fetching content from:', url);
+        console.log('[Home] Fetching FRESH content from MongoDB:', url);
 
         const response = await fetch(url, {
           method: 'GET',
           cache: 'no-store',
           headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
             'Pragma': 'no-cache',
             'Expires': '-1',
-            'Surrogate-Control': 'no-store'
+            'Surrogate-Control': 'no-store',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-Cache-Bypass': Date.now().toString()
           }
         });
 
@@ -40,7 +43,7 @@ export default function Home() {
         }
 
         const data = await response.json();
-        console.log('[Home] Content fetched:', data);
+        console.log('[Home] FRESH data from MongoDB:', data);
 
         if (isMounted) {
           setContent(data);
@@ -57,8 +60,8 @@ export default function Home() {
     // Fetch immediately
     fetchContent();
 
-    // Poll every 1 second
-    intervalId = setInterval(fetchContent, 1000);
+    // Poll every 500ms for real-time updates
+    intervalId = setInterval(fetchContent, 500);
 
     return () => {
       isMounted = false;

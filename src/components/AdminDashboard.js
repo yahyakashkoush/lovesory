@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import ImageCropper from './ImageCropper';
+import { useRouter } from 'next/navigation';import ImageCropper from './ImageCropper';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -20,23 +19,26 @@ export default function AdminDashboard() {
   const [loveMessage, setLoveMessage] = useState('');
   const [startDate, setStartDate] = useState('');
 
-  // Fetch content function
+  // Fetch content function - ALWAYS from MongoDB, NEVER from cache
   const fetchContent = async () => {
     try {
       const timestamp = Date.now();
       const random = Math.random();
-      const url = `/api/content?t=${timestamp}&r=${random}&cache=false`;
+      const unique = Math.random().toString(36).substring(7);
+      const url = `/api/content?t=${timestamp}&r=${random}&u=${unique}&nocache=${Date.now()}`;
 
-      console.log('[AdminDashboard] Fetching content from:', url);
+      console.log('[AdminDashboard] Fetching FRESH content from MongoDB:', url);
 
       const response = await fetch(url, {
         method: 'GET',
         cache: 'no-store',
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
           'Pragma': 'no-cache',
           'Expires': '-1',
-          'Surrogate-Control': 'no-store'
+          'Surrogate-Control': 'no-store',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-Cache-Bypass': Date.now().toString()
         }
       });
 
@@ -45,7 +47,7 @@ export default function AdminDashboard() {
       }
 
       const data = await response.json();
-      console.log('[AdminDashboard] Content fetched:', data);
+      console.log('[AdminDashboard] FRESH data from MongoDB:', data);
 
       setContent(data);
       setMaleFirstName(data.maleFirstName || 'Ahmed');
@@ -60,7 +62,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Initial fetch and polling
+  // Initial fetch and polling - AGGRESSIVE polling every 500ms
   useEffect(() => {
     let isMounted = true;
     let intervalId = null;
@@ -70,12 +72,12 @@ export default function AdminDashboard() {
         await fetchContent();
       }
 
-      // Poll every 1 second
+      // Poll every 500ms for real-time updates
       intervalId = setInterval(() => {
         if (isMounted) {
           fetchContent();
         }
-      }, 1000);
+      }, 500);
     };
 
     startPolling();
