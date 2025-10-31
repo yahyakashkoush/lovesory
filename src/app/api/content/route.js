@@ -1,18 +1,32 @@
 import dbConnect from '@/lib/mongodb';
 import Content from '@/models/Content';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
+import mongoose from 'mongoose';
+
+// Helper function to get fresh data directly from MongoDB
+async function getFreshContent() {
+  try {
+    const db = mongoose.connection.db;
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
+    
+    const collection = db.collection('contents');
+    const content = await collection.findOne({});
+    return content;
+  } catch (error) {
+    console.error('Error getting fresh content:', error);
+    return null;
+  }
+}
 
 export async function GET(req) {
   try {
     // CRITICAL: Always reconnect to ensure fresh data from MongoDB
     await dbConnect();
 
-    // Get the MongoDB collection directly to bypass Mongoose cache completely
-    const db = require('mongoose').connection.db;
-    const collection = db.collection('contents');
-    
-    // Query directly from MongoDB, not through Mongoose
-    const content = await collection.findOne({});
+    // Get fresh data directly from MongoDB, bypassing ALL caching
+    const content = await getFreshContent();
 
     if (!content) {
       // Create default content if none exists
@@ -20,7 +34,7 @@ export async function GET(req) {
       await newContent.save();
       
       // Read fresh from MongoDB collection
-      const saved = await collection.findOne({});
+      const saved = await getFreshContent();
       
       const headers = new Headers();
       headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');

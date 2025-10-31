@@ -3,6 +3,24 @@ import Content from '@/models/Content';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
 import fs from 'fs';
 import path from 'path';
+import mongoose from 'mongoose';
+
+// Helper function to get fresh data directly from MongoDB
+async function getFreshContent() {
+  try {
+    const db = mongoose.connection.db;
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
+    
+    const collection = db.collection('contents');
+    const content = await collection.findOne({});
+    return content;
+  } catch (error) {
+    console.error('Error getting fresh content:', error);
+    return null;
+  }
+}
 
 export async function DELETE(req) {
   try {
