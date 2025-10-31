@@ -1,6 +1,6 @@
 'use client';
 
-import { useFreshContent } from '@/hooks/useFreshContent';
+import { useEffect, useState } from 'react';
 import Hero from '@/components/Hero';
 import Music from '@/components/Music';
 import Gallery from '@/components/Gallery';
@@ -8,7 +8,65 @@ import Message from '@/components/Message';
 import Footer from '@/components/Footer';
 
 export default function Home() {
-  const { content, loading } = useFreshContent();
+  const [content, setContent] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    let intervalId = null;
+
+    const fetchContent = async () => {
+      try {
+        // Generate unique URL to bypass cache
+        const timestamp = Date.now();
+        const random = Math.random();
+        const url = `/api/content?t=${timestamp}&r=${random}&cache=false`;
+
+        console.log('[Home] Fetching content from:', url);
+
+        const response = await fetch(url, {
+          method: 'GET',
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '-1',
+            'Surrogate-Control': 'no-store'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('[Home] Content fetched:', data);
+
+        if (isMounted) {
+          setContent(data);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('[Home] Error fetching content:', error);
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    // Fetch immediately
+    fetchContent();
+
+    // Poll every 1 second
+    intervalId = setInterval(fetchContent, 1000);
+
+    return () => {
+      isMounted = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, []);
 
   if (loading) {
     return (

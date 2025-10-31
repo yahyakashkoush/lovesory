@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFreshContent } from '@/hooks/useFreshContent';
 import ImageCropper from './ImageCropper';
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { content, loading: contentLoading, refresh: refreshContent } = useFreshContent();
+  const [content, setContent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -21,16 +20,73 @@ export default function AdminDashboard() {
   const [loveMessage, setLoveMessage] = useState('');
   const [startDate, setStartDate] = useState('');
 
-  useEffect(() => {
-    if (content) {
-      setMaleFirstName(content.maleFirstName || 'Ahmed');
-      setFemaleFirstName(content.femaleFirstName || 'Mai');
-      setTagline(content.tagline || '');
-      setLoveMessage(content.loveMessage || '');
-      setStartDate(content.startDate ? new Date(content.startDate).toISOString().split('T')[0] : '');
+  // Fetch content function
+  const fetchContent = async () => {
+    try {
+      const timestamp = Date.now();
+      const random = Math.random();
+      const url = `/api/content?t=${timestamp}&r=${random}&cache=false`;
+
+      console.log('[AdminDashboard] Fetching content from:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '-1',
+          'Surrogate-Control': 'no-store'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('[AdminDashboard] Content fetched:', data);
+
+      setContent(data);
+      setMaleFirstName(data.maleFirstName || 'Ahmed');
+      setFemaleFirstName(data.femaleFirstName || 'Mai');
+      setTagline(data.tagline || '');
+      setLoveMessage(data.loveMessage || '');
+      setStartDate(data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '');
+      setLoading(false);
+    } catch (error) {
+      console.error('[AdminDashboard] Error fetching content:', error);
       setLoading(false);
     }
-  }, [content]);
+  };
+
+  // Initial fetch and polling
+  useEffect(() => {
+    let isMounted = true;
+    let intervalId = null;
+
+    const startPolling = async () => {
+      if (isMounted) {
+        await fetchContent();
+      }
+
+      // Poll every 1 second
+      intervalId = setInterval(() => {
+        if (isMounted) {
+          fetchContent();
+        }
+      }, 1000);
+    };
+
+    startPolling();
+
+    return () => {
+      isMounted = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -120,7 +176,7 @@ export default function AdminDashboard() {
         }
       }
 
-      await refreshContent();
+      await fetchContent();
       setMessage('✅ Images uploaded successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
@@ -156,7 +212,7 @@ export default function AdminDashboard() {
         throw new Error('Failed to upload song');
       }
 
-      await refreshContent();
+      await fetchContent();
       setMessage('✅ Song uploaded successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
@@ -192,7 +248,7 @@ export default function AdminDashboard() {
         throw new Error('Failed to upload cover');
       }
 
-      await refreshContent();
+      await fetchContent();
       setMessage('✅ Cover uploaded successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
@@ -241,18 +297,18 @@ export default function AdminDashboard() {
       if (!response.ok) {
         console.error('Delete failed:', responseData);
         // Revert on error
-        await refreshContent();
+        await fetchContent();
         throw new Error(responseData.error || 'Failed to delete image');
       }
 
-      await refreshContent();
+      await fetchContent();
       setMessage('✅ Image deleted successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Delete error:', error);
       setMessage(`❌ Failed to delete image: ${error.message}`);
       // Refresh to ensure UI is in sync with server
-      await refreshContent();
+      await fetchContent();
     } finally {
       setSaving(false);
     }
@@ -279,7 +335,7 @@ export default function AdminDashboard() {
         throw new Error('Failed to upload cropped image');
       }
 
-      await refreshContent();
+      await fetchContent();
       setShowCropper(false);
       setMessage('✅ Image cropped and uploaded successfully!');
       setTimeout(() => setMessage(''), 3000);
