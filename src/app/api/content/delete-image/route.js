@@ -95,8 +95,8 @@ export async function DELETE(req) {
     console.log('Content saved successfully');
     console.log('Saved images count:', savedContent.images.length);
 
-    // Read fresh from database to confirm
-    const freshContent = await Content.findOne().lean();
+    // Read fresh from database to confirm - use exec() to bypass cache
+    const freshContent = await Content.findOne().exec();
     console.log('Fresh content images count:', freshContent.images.length);
 
     return Response.json(

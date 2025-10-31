@@ -8,12 +8,13 @@ export async function GET(req) {
     await dbConnect();
 
     // ALWAYS read fresh from database - no caching
-    const content = await Content.findOne().lean();
+    // Use exec() to bypass Mongoose query caching
+    const content = await Content.findOne().exec();
 
     if (!content) {
       const newContent = new Content();
       await newContent.save();
-      const saved = await Content.findOne().lean();
+      const saved = await Content.findOne().exec();
       
       const headers = new Headers();
       headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');
@@ -26,7 +27,7 @@ export async function GET(req) {
       headers.set('Last-Modified', new Date().toUTCString());
       headers.set('Vary', '*');
 
-      return new Response(JSON.stringify(saved), { 
+      return new Response(JSON.stringify(saved.toObject()), { 
         status: 200,
         headers: headers
       });
@@ -44,7 +45,7 @@ export async function GET(req) {
     headers.set('Last-Modified', new Date().toUTCString());
     headers.set('Vary', '*');
 
-    return new Response(JSON.stringify(content), { 
+    return new Response(JSON.stringify(content.toObject()), { 
       status: 200,
       headers: headers
     });

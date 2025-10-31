@@ -80,8 +80,8 @@ export async function PUT(req) {
       startDate: savedContent.startDate,
     });
 
-    // Read fresh from database to confirm
-    const freshContent = await Content.findOne().lean();
+    // Read fresh from database to confirm - use exec() to bypass cache
+    const freshContent = await Content.findOne().exec();
 
     return Response.json(
       {

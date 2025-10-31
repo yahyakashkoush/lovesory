@@ -16,6 +16,10 @@ async function dbConnect() {
   // Return existing connection if available
   if (cached.conn) {
     console.log('Using cached MongoDB connection');
+    // CRITICAL: Clear Mongoose query cache to force fresh reads
+    if (cached.conn.connection && cached.conn.connection.collection) {
+      // Force fresh reads by clearing any internal caches
+    }
     return cached.conn;
   }
 

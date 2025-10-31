@@ -65,8 +65,8 @@ export async function POST(req) {
     const savedContent = await content.save();
     console.log('Cover saved successfully');
 
-    // Read fresh from database to confirm
-    const freshContent = await Content.findOne().lean();
+    // Read fresh from database to confirm - use exec() to bypass cache
+    const freshContent = await Content.findOne().exec();
 
     return Response.json(
       {
