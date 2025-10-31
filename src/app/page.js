@@ -14,7 +14,14 @@ export default function Home() {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const response = await fetch('/api/content');
+        const response = await fetch('/api/content', {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
         const data = await response.json();
         setContent(data);
       } catch (error) {
@@ -26,8 +33,8 @@ export default function Home() {
 
     fetchContent();
 
-    // Poll for updates every 3 seconds
-    const interval = setInterval(fetchContent, 3000);
+    // Poll for updates every 5 seconds
+    const interval = setInterval(fetchContent, 5000);
 
     return () => clearInterval(interval);
   }, []);

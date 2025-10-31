@@ -26,7 +26,14 @@ export default function AdminDashboard() {
 
   const fetchContent = async () => {
     try {
-      const response = await fetch('/api/content');
+      const response = await fetch(`/api/content?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       const data = await response.json();
       setContent(data);
       setMaleFirstName(data.maleFirstName || 'Ahmed');

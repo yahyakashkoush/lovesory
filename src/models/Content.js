@@ -20,7 +20,11 @@ const contentSchema = new mongoose.Schema(
     },
     images: [
       {
-        url: String,
+        url: {
+          type: String,
+          required: true,
+        },
+        filename: String,
         uploadedAt: {
           type: Date,
           default: Date.now,
@@ -29,10 +33,12 @@ const contentSchema = new mongoose.Schema(
     ],
     song: {
       url: String,
+      filename: String,
       uploadedAt: Date,
     },
     songCover: {
       url: String,
+      filename: String,
       uploadedAt: Date,
     },
     startDate: {
@@ -42,5 +48,8 @@ const contentSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Set a higher limit for document size (16MB is MongoDB default, but we can optimize)
+contentSchema.set('strict', true);
 
 export default mongoose.models.Content || mongoose.model('Content', contentSchema);

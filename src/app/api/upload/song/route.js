@@ -1,14 +1,6 @@
 import dbConnect from '@/lib/mongodb';
 import Content from '@/models/Content';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
-import fs from 'fs';
-import path from 'path';
-
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
 
 export async function POST(req) {
   try {
@@ -48,21 +40,12 @@ export async function POST(req) {
       );
     }
 
-    // Generate unique filename
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(7);
-    const filename = `${timestamp}-${random}-${file.name}`;
-    const filepath = path.join(uploadsDir, filename);
-
-    // Save file to disk
+    // Convert file to base64 for MongoDB storage
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    fs.writeFileSync(filepath, buffer);
-
-    console.log('Song file saved to:', filepath);
-
-    // Store only the URL reference in MongoDB
-    const songUrl = `/uploads/${filename}`;
+    const base64 = buffer.toString('base64');
+    const mimeType = file.type || 'audio/mpeg';
+    const dataUrl = `data:${mimeType};base64,${base64}`;
 
     let content = await Content.findOne();
 
@@ -71,8 +54,8 @@ export async function POST(req) {
     }
 
     content.song = {
-      url: songUrl,
-      filename: filename,
+      url: dataUrl,
+      filename: file.name,
       uploadedAt: new Date(),
     };
 
