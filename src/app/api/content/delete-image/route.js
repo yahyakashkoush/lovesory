@@ -1,34 +1,13 @@
-import dbConnect from '@/lib/mongodb';
-import Content from '@/models/Content';
+import { getContent, updateContent } from '@/lib/mongodb-direct';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
 import fs from 'fs';
 import path from 'path';
-import mongoose from 'mongoose';
-
-// Helper function to get fresh data directly from MongoDB
-async function getFreshContent() {
-  try {
-    const db = mongoose.connection.db;
-    if (!db) {
-      throw new Error('Database connection not available');
-    }
-    
-    const collection = db.collection('contents');
-    const content = await collection.findOne({});
-    return content;
-  } catch (error) {
-    console.error('Error getting fresh content:', error);
-    return null;
-  }
-}
 
 export async function DELETE(req) {
   try {
     const token = getTokenFromRequest(req);
-    console.log('Delete image token received:', token ? 'Yes' : 'No');
 
     if (!token) {
-      console.log('No token provided');
       return Response.json(
         { error: 'No token provided' },
         { status: 401 }
@@ -36,22 +15,16 @@ export async function DELETE(req) {
     }
 
     const verified = verifyToken(token);
-    console.log('Token verified:', verified ? 'Yes' : 'No');
 
     if (!verified) {
-      console.log('Token verification failed');
       return Response.json(
         { error: 'Invalid token' },
         { status: 401 }
       );
     }
 
-    await dbConnect();
-
     const { searchParams } = new URL(req.url);
     const imageIndex = parseInt(searchParams.get('index'));
-
-    console.log('Deleting image at index:', imageIndex);
 
     if (isNaN(imageIndex) || imageIndex < 0) {
       return Response.json(
@@ -60,8 +33,8 @@ export async function DELETE(req) {
       );
     }
 
-    // SINGLETON: Always use the first document (there should only be one)
-    let content = await Content.findOne();
+    // Get current content
+    const content = await getContent();
 
     if (!content) {
       return Response.json(
@@ -79,45 +52,32 @@ export async function DELETE(req) {
 
     // Get the image to delete
     const imageToDelete = content.images[imageIndex];
-    console.log('Image to delete:', imageToDelete);
 
     // Delete the file from disk if it exists
     if (imageToDelete.filename) {
       const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
       const filepath = path.join(uploadsDir, imageToDelete.filename);
-      
+
       try {
         if (fs.existsSync(filepath)) {
           fs.unlinkSync(filepath);
-          console.log('File deleted from disk:', filepath);
         }
       } catch (fileError) {
         console.error('Error deleting file:', fileError);
-        // Continue anyway - delete from DB
       }
     }
 
     // Remove the image at the specified index
-    console.log('Before splice - images count:', content.images.length);
-    
-    // Create new array without the image
     const newImages = content.images.filter((_, i) => i !== imageIndex);
-    console.log('After filter - images count:', newImages.length);
-    
-    // Replace the entire images array
-    content.images = newImages;
-    content.markModified('images');
-    
-    console.log('Saving content...');
-    const savedContent = await content.save();
-    console.log('Content saved successfully');
-    console.log('Saved images count:', savedContent.images.length);
 
-    // Read fresh from MongoDB collection directly to bypass Mongoose cache
-    const db = require('mongoose').connection.db;
-    const collection = db.collection('contents');
-    const freshContent = await collection.findOne({});
-    console.log('Fresh content images count:', freshContent.images.length);
+    // Update in MongoDB
+    await updateContent({
+      images: newImages,
+      updatedAt: new Date(),
+    });
+
+    // Read fresh data
+    const freshContent = await getContent();
 
     return Response.json(
       {
@@ -125,7 +85,8 @@ export async function DELETE(req) {
         message: 'Image deleted successfully',
         imagesCount: freshContent.images.length,
       },
-      { status: 200,
+      {
+        status: 200,
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
           'Pragma': 'no-cache',
@@ -135,8 +96,6 @@ export async function DELETE(req) {
     );
   } catch (error) {
     console.error('Delete image error:', error);
-    console.error('Error message:', error.message);
-    console.error('Error code:', error.code);
 
     return Response.json(
       { error: error.message || 'Internal server error' },
