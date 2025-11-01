@@ -6,25 +6,23 @@ if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
 }
 
-// Single persistent connection for writes
+// Single persistent connection for writes only
 let writeClient = null;
-let writeDb = null;
 
 async function getWriteConnection() {
-  if (writeClient && writeDb) {
+  if (writeClient) {
     try {
-      await writeDb.admin().ping();
-      return { client: writeClient, db: writeDb };
+      await writeClient.db('test').admin().ping();
+      return writeClient;
     } catch (error) {
       console.error('[MongoDB] Write connection failed, reconnecting');
       writeClient = null;
-      writeDb = null;
     }
   }
 
   const client = new MongoClient(MONGODB_URI, {
-    maxPoolSize: 5,
-    minPoolSize: 1,
+    maxPoolSize: 10,
+    minPoolSize: 2,
     retryWrites: true,
     w: 'majority',
     serverSelectionTimeoutMS: 10000,
@@ -33,20 +31,17 @@ async function getWriteConnection() {
   });
 
   await client.connect();
-  const db = client.db('test');
-  await db.admin().ping();
+  await client.db('test').admin().ping();
   
   writeClient = client;
-  writeDb = db;
-  
   console.log('[MongoDB] Write connection established');
-  return { client, db };
+  return client;
 }
 
 export async function getContent() {
   let client = null;
   try {
-    // ALWAYS create a fresh connection for reads
+    // Fresh connection for EVERY read - no caching
     client = new MongoClient(MONGODB_URI, {
       maxPoolSize: 1,
       minPoolSize: 0,
@@ -59,21 +54,10 @@ export async function getContent() {
     const db = client.db('test');
     const collection = db.collection('contents');
     
-    // Read from primary with majority concern
-    const content = await collection.findOne(
-      {},
-      { 
-        readPreference: 'primary',
-        readConcern: { level: 'majority' }
-      }
-    );
+    const content = await collection.findOne({});
     
     if (content) {
-      console.log('[getContent] ✅ Retrieved:', {
-        id: content._id,
-        femaleFirstName: content.femaleFirstName,
-        updatedAt: content.updatedAt
-      });
+      console.log('[getContent] ✅ Found:', content.femaleFirstName);
     } else {
       console.log('[getContent] ⚠️ No content found');
     }
@@ -95,13 +79,11 @@ export async function getContent() {
 
 export async function updateContent(data) {
   try {
-    const { db } = await getWriteConnection();
+    const client = await getWriteConnection();
+    const db = client.db('test');
     const collection = db.collection('contents');
     
-    console.log('[updateContent] 📝 Updating:', {
-      femaleFirstName: data.femaleFirstName,
-      maleFirstName: data.maleFirstName,
-    });
+    console.log('[updateContent] 📝 Updating:', data.femaleFirstName);
     
     const result = await collection.updateOne(
       {},
@@ -117,14 +99,7 @@ export async function updateContent(data) {
       }
     );
     
-    console.log('[updateContent] ✅ Updated:', {
-      matchedCount: result.matchedCount,
-      modifiedCount: result.modifiedCount,
-    });
-    
-    // Wait for write to propagate
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
+    console.log('[updateContent] ✅ Updated');
     return result;
   } catch (error) {
     console.error('[updateContent] ❌ Error:', error.message);
@@ -136,6 +111,5 @@ export function closeConnections() {
   if (writeClient) {
     writeClient.close();
     writeClient = null;
-    writeDb = null;
   }
 }
