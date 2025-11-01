@@ -58,9 +58,22 @@ export async function getContentCollection() {
 }
 
 export async function getContent() {
+  let client = null;
   try {
-    const collection = await getContentCollection();
-    // Use readPreference to ensure fresh read from primary
+    // Create a FRESH connection for reads to bypass any caching
+    client = new MongoClient(MONGODB_URI, {
+      maxPoolSize: 1,
+      minPoolSize: 0,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 15000,
+    });
+    
+    await client.connect();
+    const db = client.db('test');
+    const collection = db.collection('contents');
+    
+    // Read with explicit primary preference and majority read concern
     const content = await collection.findOne(
       {},
       { 
@@ -68,11 +81,21 @@ export async function getContent() {
         readConcern: { level: 'majority' }
       }
     );
-    console.log('[getContent] Retrieved:', content ? 'Found' : 'Not found');
+    
+    console.log('[getContent] Retrieved:', content ? {
+      maleFirstName: content.maleFirstName,
+      femaleFirstName: content.femaleFirstName,
+      updatedAt: content.updatedAt
+    } : 'Not found');
+    
     return content;
   } catch (error) {
     console.error('[getContent] Error:', error);
     throw error;
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 }
 
@@ -81,6 +104,12 @@ export async function updateContent(data) {
     const collection = await getContentCollection();
     
     console.log('[updateContent] Updating with:', Object.keys(data));
+    console.log('[updateContent] Data values:', {
+      maleFirstName: data.maleFirstName,
+      femaleFirstName: data.femaleFirstName,
+      tagline: data.tagline?.substring(0, 30),
+      loveMessage: data.loveMessage?.substring(0, 30),
+    });
     
     const result = await collection.updateOne(
       {},
@@ -102,9 +131,8 @@ export async function updateContent(data) {
       upsertedId: result.upsertedId
     });
     
-    // Force a fresh read after update to ensure data consistency
-    // Wait a bit for write to propagate
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Wait for write to propagate
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     return result;
   } catch (error) {

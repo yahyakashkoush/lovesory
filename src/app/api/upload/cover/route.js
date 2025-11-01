@@ -79,8 +79,8 @@ export async function POST(req) {
       }
     });
 
-    // Wait for write to propagate
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Wait for write to propagate - increased to 500ms for reliability
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Read fresh from database to confirm
     const freshContent = await getContent();

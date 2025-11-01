@@ -43,8 +43,8 @@ export async function PUT(req) {
 
     console.log('[PUT /api/content/update-text] Update completed');
 
-    // Wait a bit for write to propagate
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Wait for write to propagate - increased to 500ms for reliability
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Read fresh data
     const freshContent = await getContent();
