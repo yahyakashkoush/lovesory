@@ -1,18 +1,18 @@
-import { getContent, updateContent } from '@/lib/mongodb-direct';
+import { getContent, updateContent } from '@/lib/db';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
 
 export async function GET(req) {
   try {
-    console.log('[GET /api/content] Request received at', new Date().toISOString());
+    console.log('[GET /api/content] Request received');
     
-    const content = await getContent();
+    const content = await Promise.resolve(getContent());
     console.log('[GET /api/content] Content retrieved:', content ? 'Found' : 'Not found');
 
     if (!content) {
       console.log('[GET /api/content] Creating default content');
       
       // Create default content
-      await updateContent({
+      await Promise.resolve(updateContent({
         maleFirstName: 'Ahmed',
         femaleFirstName: 'Mai',
         tagline: 'Our love story began with a glance and turned into a lifetime of longing.',
@@ -20,14 +20,10 @@ export async function GET(req) {
         images: [],
         song: {},
         songCover: {},
-        startDate: new Date('2024-01-01'),
-        createdAt: new Date(),
-      });
+        startDate: new Date('2024-01-01').toISOString(),
+      }));
 
-      // Wait a bit for write to propagate
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      const freshContent = await getContent();
+      const freshContent = await Promise.resolve(getContent());
       console.log('[GET /api/content] Fresh content after creation:', freshContent ? 'Found' : 'Not found');
 
       const headers = new Headers();
@@ -53,17 +49,9 @@ export async function GET(req) {
     console.log('[GET /api/content] Returning content:', {
       maleFirstName: content.maleFirstName,
       femaleFirstName: content.femaleFirstName,
-      tagline: content.tagline?.substring(0, 30),
-      loveMessage: content.loveMessage?.substring(0, 30),
     });
 
-    // Convert ObjectId to string for JSON serialization
-    const contentToReturn = {
-      ...content,
-      _id: content._id?.toString() || content._id,
-    };
-
-    return new Response(JSON.stringify(contentToReturn), {
+    return new Response(JSON.stringify(content), {
       status: 200,
       headers: headers
     });
@@ -106,15 +94,12 @@ export async function PUT(req) {
     const body = await req.json();
     console.log('[PUT /api/content] Update body:', Object.keys(body));
 
-    // Update in MongoDB
-    await updateContent(body);
+    // Update in database
+    await Promise.resolve(updateContent(body));
     console.log('[PUT /api/content] Update completed');
 
-    // Wait for write to propagate
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Read fresh data
-    const freshContent = await getContent();
+    // Read fresh data immediately
+    const freshContent = await Promise.resolve(getContent());
     console.log('[PUT /api/content] Fresh content after update:', {
       maleFirstName: freshContent.maleFirstName,
       femaleFirstName: freshContent.femaleFirstName,

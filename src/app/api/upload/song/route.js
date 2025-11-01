@@ -1,4 +1,4 @@
-import { getContent, updateContent } from '@/lib/mongodb-direct';
+import { getContent, updateContent } from '@/lib/db';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
 
 export async function POST(req) {
@@ -40,7 +40,7 @@ export async function POST(req) {
       );
     }
 
-    // Convert file to base64 for MongoDB storage
+    // Convert file to base64 for database storage
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const base64 = buffer.toString('base64');
@@ -48,11 +48,11 @@ export async function POST(req) {
     const dataUrl = `data:${mimeType};base64,${base64}`;
 
     // Get current content
-    let content = await getContent();
+    let content = await Promise.resolve(getContent());
 
     if (!content) {
       // Create default content if it doesn't exist
-      await updateContent({
+      await Promise.resolve(updateContent({
         maleFirstName: 'Ahmed',
         femaleFirstName: 'Mai',
         tagline: 'Our love story began with a glance and turned into a lifetime of longing.',
@@ -60,30 +60,24 @@ export async function POST(req) {
         images: [],
         song: {},
         songCover: {},
-        startDate: new Date('2024-01-01'),
-        createdAt: new Date(),
-      });
+        startDate: new Date('2024-01-01').toISOString(),
+      }));
       
-      // Wait for write to propagate
-      await new Promise(resolve => setTimeout(resolve, 200));
-      content = await getContent();
+      content = await Promise.resolve(getContent());
     }
 
     console.log('[POST /api/upload/song] Saving song');
 
-    await updateContent({
+    await Promise.resolve(updateContent({
       song: {
         url: dataUrl,
         filename: file.name,
-        uploadedAt: new Date(),
+        uploadedAt: new Date().toISOString(),
       }
-    });
-
-    // Wait for write to propagate - 2 seconds for reliability
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    }));
 
     // Read fresh from database to confirm
-    const freshContent = await getContent();
+    const freshContent = await Promise.resolve(getContent());
     console.log('[POST /api/upload/song] Song saved successfully');
 
     return Response.json(

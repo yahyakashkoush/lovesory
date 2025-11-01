@@ -1,7 +1,5 @@
-import { getContent, updateContent } from '@/lib/mongodb-direct';
+import { getContent, updateContent } from '@/lib/db';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
-import fs from 'fs';
-import path from 'path';
 
 export async function DELETE(req) {
   try {
@@ -40,7 +38,7 @@ export async function DELETE(req) {
     }
 
     // Get current content
-    const content = await getContent();
+    const content = await Promise.resolve(getContent());
 
     if (!content) {
       console.log('[DELETE /api/content/delete-image] Content not found');
@@ -62,37 +60,19 @@ export async function DELETE(req) {
     const imageToDelete = content.images[imageIndex];
     console.log('[DELETE /api/content/delete-image] Deleting image:', imageToDelete.filename);
 
-    // Delete the file from disk if it exists
-    if (imageToDelete.filename) {
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-      const filepath = path.join(uploadsDir, imageToDelete.filename);
-
-      try {
-        if (fs.existsSync(filepath)) {
-          fs.unlinkSync(filepath);
-          console.log('[DELETE /api/content/delete-image] File deleted from disk');
-        }
-      } catch (fileError) {
-        console.error('[DELETE /api/content/delete-image] Error deleting file:', fileError);
-      }
-    }
-
     // Remove the image at the specified index
     const newImages = content.images.filter((_, i) => i !== imageIndex);
     console.log('[DELETE /api/content/delete-image] New images count:', newImages.length);
 
-    // Update in MongoDB
-    await updateContent({
+    // Update in database
+    await Promise.resolve(updateContent({
       images: newImages,
-    });
+    }));
 
     console.log('[DELETE /api/content/delete-image] Update completed');
 
-    // Wait for write to propagate - 2 seconds for reliability
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
     // Read fresh data
-    const freshContent = await getContent();
+    const freshContent = await Promise.resolve(getContent());
     console.log('[DELETE /api/content/delete-image] Fresh content after delete:', {
       imagesCount: freshContent.images.length
     });

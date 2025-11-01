@@ -1,18 +1,11 @@
-import { getContentCollection } from '@/lib/mongodb-direct';
+import { updateContent } from '@/lib/db';
 
 export async function POST(req) {
-  let client = null;
   try {
-    const collectionObj = await getContentCollection();
-    const collection = collectionObj;
-    client = collectionObj._client;
+    console.log('[clean-db] Resetting database to defaults');
 
-    // Delete all old content
-    await collection.deleteMany({});
-    console.log('[clean-db] Deleted old content');
-
-    // Create fresh content
-    const newDoc = {
+    // Reset to default content
+    await Promise.resolve(updateContent({
       maleFirstName: 'Ahmed',
       femaleFirstName: 'Mai',
       tagline: 'Our love story began with a glance and turned into a lifetime of longing.',
@@ -20,16 +13,13 @@ export async function POST(req) {
       images: [],
       song: {},
       songCover: {},
-      startDate: new Date('2024-01-01'),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+      startDate: new Date('2024-01-01').toISOString(),
+    }));
 
-    const result = await collection.insertOne(newDoc);
-    console.log('[clean-db] Created fresh content:', result.insertedId);
+    console.log('[clean-db] Database reset successfully');
 
     return Response.json(
-      { success: true, message: 'Database cleaned successfully' },
+      { success: true, message: 'Database reset successfully' },
       { status: 200 }
     );
   } catch (error) {
@@ -38,14 +28,5 @@ export async function POST(req) {
       { error: error.message },
       { status: 500 }
     );
-  } finally {
-    if (client) {
-      try {
-        await client.close();
-        console.log('[clean-db] Connection closed');
-      } catch (e) {
-        // Ignore close errors
-      }
-    }
   }
 }

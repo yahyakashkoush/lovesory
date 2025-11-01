@@ -153,9 +153,7 @@ export default function AdminDashboard() {
       setTagline(data.tagline);
       setLoveMessage(data.loveMessage);
       
-      // Refresh content from database to ensure sync - wait 3 seconds for propagation
-      console.log('[AdminDashboard] Waiting 3 seconds for data propagation...');
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Refresh content from database immediately
       console.log('[AdminDashboard] Fetching fresh data from database...');
       await fetchContent(true);
       

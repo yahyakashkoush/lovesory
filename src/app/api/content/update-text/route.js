@@ -1,4 +1,4 @@
-import { getContent, updateContent } from '@/lib/mongodb-direct';
+import { getContent, updateContent } from '@/lib/db';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
 
 export async function PUT(req) {
@@ -32,22 +32,19 @@ export async function PUT(req) {
       loveMessage: body.loveMessage?.substring(0, 30),
     });
 
-    // Update in MongoDB
-    await updateContent({
+    // Update in database
+    await Promise.resolve(updateContent({
       maleFirstName: body.maleFirstName,
       femaleFirstName: body.femaleFirstName,
       tagline: body.tagline,
       loveMessage: body.loveMessage,
       startDate: body.startDate,
-    });
+    }));
 
     console.log('[PUT /api/content/update-text] Update completed');
 
-    // Wait for write to propagate - 2 seconds for reliability
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Read fresh data
-    const freshContent = await getContent();
+    // Read fresh data immediately
+    const freshContent = await Promise.resolve(getContent());
     console.log('[PUT /api/content/update-text] Fresh content after update:', {
       maleFirstName: freshContent.maleFirstName,
       femaleFirstName: freshContent.femaleFirstName,
