@@ -1,8 +1,11 @@
 import { getContentCollection } from '@/lib/mongodb-direct';
 
 export async function POST(req) {
+  let client = null;
   try {
-    const collection = await getContentCollection();
+    const collectionObj = await getContentCollection();
+    const collection = collectionObj;
+    client = collectionObj._client;
 
     // Delete all old content
     await collection.deleteMany({});
@@ -35,5 +38,14 @@ export async function POST(req) {
       { error: error.message },
       { status: 500 }
     );
+  } finally {
+    if (client) {
+      try {
+        await client.close();
+        console.log('[clean-db] Connection closed');
+      } catch (e) {
+        // Ignore close errors
+      }
+    }
   }
 }

@@ -2,6 +2,7 @@ import { getContentCollection } from '@/lib/mongodb-direct';
 import { getTokenFromRequest, verifyToken } from '@/lib/jwt';
 
 export async function POST(req) {
+  let client = null;
   try {
     const token = getTokenFromRequest(req);
 
@@ -20,7 +21,9 @@ export async function POST(req) {
       );
     }
 
-    const collection = await getContentCollection();
+    const collectionObj = await getContentCollection();
+    const collection = collectionObj;
+    client = collectionObj._client;
 
     // Get all documents
     const allDocs = await collection.find({}).toArray();
@@ -86,5 +89,14 @@ export async function POST(req) {
       { error: error.message || 'Internal server error' },
       { status: 500 }
     );
+  } finally {
+    if (client) {
+      try {
+        await client.close();
+        console.log('[cleanup-duplicates] Connection closed');
+      } catch (e) {
+        // Ignore close errors
+      }
+    }
   }
 }

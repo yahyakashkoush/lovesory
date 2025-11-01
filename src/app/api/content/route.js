@@ -57,7 +57,13 @@ export async function GET(req) {
       loveMessage: content.loveMessage?.substring(0, 30),
     });
 
-    return new Response(JSON.stringify(content), {
+    // Convert ObjectId to string for JSON serialization
+    const contentToReturn = {
+      ...content,
+      _id: content._id?.toString() || content._id,
+    };
+
+    return new Response(JSON.stringify(contentToReturn), {
       status: 200,
       headers: headers
     });
