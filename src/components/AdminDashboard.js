@@ -53,14 +53,12 @@ export default function AdminDashboard() {
 
       setContent(data);
       
-      // CRITICAL: Only update form fields if not currently editing (skipFormUpdate = false)
-      if (!skipFormUpdate) {
-        setMaleFirstName(data.maleFirstName || 'Ahmed');
-        setFemaleFirstName(data.femaleFirstName || 'Mai');
-        setTagline(data.tagline || '');
-        setLoveMessage(data.loveMessage || '');
-        setStartDate(data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '');
-      }
+      // ALWAYS update form fields from database
+      setMaleFirstName(data.maleFirstName || 'Ahmed');
+      setFemaleFirstName(data.femaleFirstName || 'Mai');
+      setTagline(data.tagline || '');
+      setLoveMessage(data.loveMessage || '');
+      setStartDate(data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '');
       
       setLoading(false);
     } catch (error) {
