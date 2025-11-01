@@ -155,8 +155,8 @@ export default function AdminDashboard() {
       setTagline(data.tagline);
       setLoveMessage(data.loveMessage);
       
-      // Refresh content from database to ensure sync - wait 1 second for propagation
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Refresh content from database to ensure sync - wait 2 seconds for propagation
+      await new Promise(resolve => setTimeout(resolve, 2000));
       await fetchContent(true);
       
       setMessage('✅ Content saved successfully!');

@@ -67,6 +67,7 @@ export async function getContent() {
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
       connectTimeoutMS: 15000,
+      retryWrites: false, // Disable retry to get fresh read
     });
     
     await client.connect();
@@ -94,7 +95,11 @@ export async function getContent() {
     throw error;
   } finally {
     if (client) {
-      await client.close();
+      try {
+        await client.close();
+      } catch (e) {
+        console.error('[getContent] Error closing client:', e);
+      }
     }
   }
 }

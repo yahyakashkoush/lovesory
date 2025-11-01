@@ -104,6 +104,9 @@ export async function PUT(req) {
     await updateContent(body);
     console.log('[PUT /api/content] Update completed');
 
+    // Wait for write to propagate
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     // Read fresh data
     const freshContent = await getContent();
     console.log('[PUT /api/content] Fresh content after update:', {
