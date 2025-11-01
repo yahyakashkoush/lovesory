@@ -1,14 +1,18 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 
-// Create data directory if it doesn't exist
-const dataDir = path.join(process.cwd(), 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+// Use temp directory for database (works on Vercel and local)
+const dbPath = process.env.NODE_ENV === 'production' 
+  ? path.join('/tmp', 'content.db')
+  : path.join(process.cwd(), 'data', 'content.db');
+
+// Create directory if it doesn't exist
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
 }
-
-const dbPath = path.join(dataDir, 'content.db');
 
 // Initialize database
 function initializeDatabase() {
