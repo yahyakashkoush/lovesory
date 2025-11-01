@@ -6,27 +6,25 @@ if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
 }
 
-let cachedClient = null;
-let cachedDb = null;
+// Single persistent connection for writes
+let writeClient = null;
+let writeDb = null;
 
-export async function connectToDatabase() {
-  // Return cached connection if available and connected
-  if (cachedClient && cachedDb) {
+async function getWriteConnection() {
+  if (writeClient && writeDb) {
     try {
-      // Verify connection is still alive
-      await cachedDb.admin().ping();
-      return { client: cachedClient, db: cachedDb };
+      await writeDb.admin().ping();
+      return { client: writeClient, db: writeDb };
     } catch (error) {
-      console.error('[MongoDB] Cached connection failed, reconnecting:', error.message);
-      cachedClient = null;
-      cachedDb = null;
+      console.error('[MongoDB] Write connection failed, reconnecting');
+      writeClient = null;
+      writeDb = null;
     }
   }
 
-  // Create new connection
   const client = new MongoClient(MONGODB_URI, {
-    maxPoolSize: 10,
-    minPoolSize: 2,
+    maxPoolSize: 5,
+    minPoolSize: 1,
     retryWrites: true,
     w: 'majority',
     serverSelectionTimeoutMS: 10000,
@@ -34,47 +32,34 @@ export async function connectToDatabase() {
     connectTimeoutMS: 15000,
   });
 
-  try {
-    await client.connect();
-    const db = client.db('test');
-    
-    // Verify connection
-    await db.admin().ping();
-    
-    cachedClient = client;
-    cachedDb = db;
-    
-    console.log('[MongoDB] Connected successfully');
-    return { client, db };
-  } catch (error) {
-    console.error('[MongoDB] Connection failed:', error.message);
-    throw error;
-  }
-}
-
-export async function getContentCollection() {
-  const { db } = await connectToDatabase();
-  return db.collection('contents');
+  await client.connect();
+  const db = client.db('test');
+  await db.admin().ping();
+  
+  writeClient = client;
+  writeDb = db;
+  
+  console.log('[MongoDB] Write connection established');
+  return { client, db };
 }
 
 export async function getContent() {
   let client = null;
   try {
-    // Create a FRESH connection for reads to bypass any caching
+    // ALWAYS create a fresh connection for reads
     client = new MongoClient(MONGODB_URI, {
       maxPoolSize: 1,
       minPoolSize: 0,
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
       connectTimeoutMS: 15000,
-      retryWrites: false, // Disable retry to get fresh read
     });
     
     await client.connect();
     const db = client.db('test');
     const collection = db.collection('contents');
     
-    // Read with explicit primary preference and majority read concern
+    // Read from primary with majority concern
     const content = await collection.findOne(
       {},
       { 
@@ -83,22 +68,26 @@ export async function getContent() {
       }
     );
     
-    console.log('[getContent] Retrieved:', content ? {
-      maleFirstName: content.maleFirstName,
-      femaleFirstName: content.femaleFirstName,
-      updatedAt: content.updatedAt
-    } : 'Not found');
+    if (content) {
+      console.log('[getContent] ✅ Retrieved:', {
+        id: content._id,
+        femaleFirstName: content.femaleFirstName,
+        updatedAt: content.updatedAt
+      });
+    } else {
+      console.log('[getContent] ⚠️ No content found');
+    }
     
     return content;
   } catch (error) {
-    console.error('[getContent] Error:', error);
+    console.error('[getContent] ❌ Error:', error.message);
     throw error;
   } finally {
     if (client) {
       try {
         await client.close();
       } catch (e) {
-        console.error('[getContent] Error closing client:', e);
+        // Ignore close errors
       }
     }
   }
@@ -106,14 +95,12 @@ export async function getContent() {
 
 export async function updateContent(data) {
   try {
-    const collection = await getContentCollection();
+    const { db } = await getWriteConnection();
+    const collection = db.collection('contents');
     
-    console.log('[updateContent] Updating with:', Object.keys(data));
-    console.log('[updateContent] Data values:', {
-      maleFirstName: data.maleFirstName,
+    console.log('[updateContent] 📝 Updating:', {
       femaleFirstName: data.femaleFirstName,
-      tagline: data.tagline?.substring(0, 30),
-      loveMessage: data.loveMessage?.substring(0, 30),
+      maleFirstName: data.maleFirstName,
     });
     
     const result = await collection.updateOne(
@@ -130,24 +117,25 @@ export async function updateContent(data) {
       }
     );
     
-    console.log('[updateContent] Update result:', {
+    console.log('[updateContent] ✅ Updated:', {
       matchedCount: result.matchedCount,
       modifiedCount: result.modifiedCount,
-      upsertedId: result.upsertedId
     });
     
     // Wait for write to propagate
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     return result;
   } catch (error) {
-    console.error('[updateContent] Error:', error);
+    console.error('[updateContent] ❌ Error:', error.message);
     throw error;
   }
 }
 
-export function clearConnectionCache() {
-  console.log('[MongoDB] Clearing connection cache');
-  cachedClient = null;
-  cachedDb = null;
+export function closeConnections() {
+  if (writeClient) {
+    writeClient.close();
+    writeClient = null;
+    writeDb = null;
+  }
 }
